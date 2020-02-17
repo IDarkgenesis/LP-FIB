@@ -65,4 +65,28 @@ oddsNevens [] = ([],[])
 oddsNevens (x:xs)
     | even x = (od , x : ev)
     | otherwise = (x : od, ev)
-    where (od,ev) = oddsNevens(xs)
+        where (od,ev) = oddsNevens(xs)
+          
+-- PRIME DIVISORS
+
+primeDivisors :: Int -> [Int]
+primeDivisors x = primeDivisors' 2 []
+    where 
+        primeDivisors'::Int -> [Int] -> [Int]
+        primeDivisors' d res
+            | d > x = res
+            | (d == 2) && ((mod x d) == 0) = primeDivisors' 3 (res ++ [d])
+            | (d == 2) = primeDivisors' 3 res
+            | ((mod x d) == 0) && isPrime d = primeDivisors' (d+2) (res ++ [d])
+            | otherwise = primeDivisors' (d+2) res
+                where --AFEGIR FUNCIO PER SABER SI ES PRIMER
+                    isPrime::Int -> Bool
+                    isPrime 0 = False
+                    isPrime 1 = False
+                    isPrime n = isPrime' 2
+                        where
+                            isPrime'::Int -> Bool 
+                            isPrime' d
+                                | d*d > n = True
+                                | (mod n d) == 0 = False
+                                | otherwise = isPrime' (d+1)
