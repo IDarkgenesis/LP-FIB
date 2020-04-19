@@ -1,76 +1,6 @@
 import Data.Map (Map)
 import qualified Data.Map.Strict as Map
 
-data Strats= Human | Rng | Greedy | Smart
-
-data Player = Player {pid :: Int, strat :: Strats}
-
---Funcio extreta de la llibreria Data.Maybe
-fromMaybe :: a -> Maybe a -> a
-fromMaybe d x = case x of {Nothing -> d;Just v  -> v}
-
-string2Int:: String -> Int
-string2Int c = read c ::Int
-
-int2String :: Int -> String
-int2String n = show n
-
-insert :: Int -> Int -> Map Int [Int] -> Map Int [Int]
-insert k nv m= Map.insertWith (++) k [nv] m
-
-find:: Int -> Map Int [Int] -> (Maybe [Int])
-find k m= Map.lookup k m
-
-
-initGame :: Int -> Int -> Map Int [Int]
-initGame r c = Map.fromList (map createCol [1..c])
-    where
-        createCol :: Int -> (Int, [Int])
-        createCol n = (n , [])
-        
-createColNum :: Int -> Int -> String
-createColNum c cs
-    | c < cs  = " " ++ int2String c ++ createColNum (c+1) cs
-    | otherwise = " " ++ int2String c
-
-createHeader :: Int -> String     
-createHeader 1 =  "+-+"
-createHeader n = "+-" ++ createHeader (n-1)
-
-selectPiece :: Int -> String
-selectPiece 1 = "|X"
-selectPiece 2 = "|O"
-
-getPiece:: Int -> [Int] -> String
-getPiece r xs
-    | (r - length(xs)) < 0 = getPiece r (tail xs)
-    | (r - length(xs)) > 0 = "| "
-    | (r - length(xs)) == 0 = selectPiece (head xs)
-
-getElem :: Int -> Int -> Int -> Map Int [Int] -> String
-getElem r c cs m = getPiece r (fromMaybe [] (find c m))
-    
-createRow :: Int -> Int -> Int -> Map Int [Int] -> String
-createRow r c cs m
-    | (c-cs) == 0 = (getElem r c cs m) ++ "|"
-    | otherwise= (getElem r c cs m) ++ createRow r (c+1) cs m 
-
-
-printBoard:: Int -> Int -> Map Int [Int] -> IO()
-printBoard 0 cs m = do
-    let h= createHeader cs
-    putStrLn $ h
-    let n= createColNum 1 cs
-    putStrLn $ n
-    
-
-printBoard r cs m= do
-    let h= createHeader cs
-    putStrLn $ h
-    let row= createRow r 1 cs m
-    putStrLn $ row
-    printBoard (r-1) cs m
-    
 
 main = do
     putStrLn $ "Benvingut!"
@@ -90,16 +20,227 @@ main = do
     c <- getLine
     let cs = string2Int c
     
+    putStrLn " "
+    putStrLn " "
     
-    let g= initGame rs cs t
+    runGame (initGame rs cs tp)
     
     --PURE TESTING
+
+--------------------------
+-- ESTRUCTURES DE DADES --
+--------------------------
+
+data Strats= Human | Rng | Greedy | Smart
+
+data Player = Player {  pid :: Int, 
+                        strat :: Strats}
+
+data World = State {    row :: Int,
+                        col :: Int,
+                        board :: Map Int [Int], 
+                        player1 :: Player,
+                        player2 :: Player}
+
+--------------
+-- FUNCIONS --
+--------------
+
+{-  fromMaybe -> Permet extreure el contingut de un Maybe en cas de Just si no retorna un parametre per defecte definit a la funció
+                 (Extret de la llibreria Data.Maybe)
+    PARAMETRES:
+        d -> Valor per defecte que es retorna en cas de Nothing
+        x -> Element Maybe a del que en volem extreure el resultat
+-}
+fromMaybe :: a -> Maybe a -> a
+fromMaybe d x = case x of {Nothing -> d;Just v  -> v}
+
+
+{- string2Int -> Transforma una String a un Int
     
-    let g2= insert 1 1 g
-    let g3= insert 1 2 g2
-    let g4= insert 4 1 g3
+    PARAMETRES:
+        s -> String a transformar
+-}
+string2Int:: String -> Int
+string2Int s = read s ::Int
+
+
+{- int2String -> Transforma un Int en una String
     
+    PARAMETRES:
+        n   -> Nombre a transformar
+-}
+int2String :: Int -> String
+int2String n = show n
+
+{- insert -> Insereix en un element la columna desitjada
+    
+    PARAMETRES:
+        k   -> Clau que identifica a la columna
+        nv  -> Valor a inserir a la columna
+        m   -> Tauler on volem inserir el nou element
+-}
+insert :: Int -> Int -> Map Int [Int] -> Map Int [Int]
+insert k nv m= Map.insertWith (++) k [nv] m
+
+{- find -> Retorna la columna desitjada del tauler
+    
+    PARAMETRES:
+        k   -> Clau que identifica la columna
+        m   -> Tauler on volem buscar la columna
+-}
+find:: Int -> Map Int [Int] -> (Maybe [Int])
+find k m= Map.lookup k m
+
+{- initBoard -> Inicialitza el tauler del joc
+    
+    PARAMETRES:
+        c   -> Nombre total de columnes del tauler 
+-}
+initBoard :: Int -> Map Int [Int]
+initBoard c = Map.fromList (map createCol [1..c])
+    where
+        createCol :: Int -> (Int, [Int])
+        createCol n = (n , [])
+        
+{- createColNum -> Crea una string que indica una vegada impres el tauler el identificador de cada columna
+    
+    PARAMETRES:
+        c   -> Identificador de la columna actual
+        cs  -> Nombre total de columnes
+-}
+createColNum :: Int -> Int -> String
+createColNum c cs
+    | c < cs  = " " ++ int2String c ++ createColNum (c+1) cs
+    | otherwise = " " ++ int2String c
+
+    
+{- createHeader -> Crea les divisions que s'utilitzen quant s'imprimeix el tauler
+    PARAMETRES:
+        n   -> Representa el nombre de columnes que falten per crear 
+-}
+createHeader :: Int -> String     
+createHeader 1 =  "+-+"
+createHeader n = "+-" ++ createHeader (n-1)
+
+{- selectPiece -> Donat un valor que representa un PID de un jugador determina la fitxa
+    
+    PARAMETRES:
+        id  -> nombre compres entre 1 i 2 que representa al jugador que ha colocat una fitxa
+-}
+selectPiece :: Int -> String
+selectPiece 1 = "|X"
+selectPiece 2 = "|O"
+
+
+{- getPiece -> Determina si l'element que volem es troba a la taula i si es troba al principi de la llista
+    
+    PARAMETRES:
+        r   -> Posició de la fila que volem buscar
+        xs  -> Llista on busquem el element desitjat
+-}
+getPiece:: Int -> [Int] -> String
+getPiece r xs
+    | (r - length(xs)) < 0 = getPiece r (tail xs)
+    | (r - length(xs)) > 0 = "| "
+    | (r - length(xs)) == 0 = selectPiece (head xs)
+
+    
+{- getElem -> Obté l'element del tauler en la posició 'r', 'c', les files estan idexades de major a menor
+    
+    PARAMETRES:
+        r   -> Fila on es troba l'element que volem
+        c   -> Columna on es troba l'element que volem
+        cs  -> Nombre total de columnes
+        m   -> Tauler del joc
+-} 
+getElem :: Int -> Int -> Int -> Map Int [Int] -> String
+getElem r c cs m = getPiece r (fromMaybe [] (find c m))
+    
+{- createRow -> Crea una string que representa la fila donada
+
+    PARAMETRES: 
+        r   -> Fila que volem (ordre decreixent)
+        c   -> Columna que volem imprimir
+        cs  -> Nombre total de columnes
+        m   -> Tauler que volem imprimir
+-}
+createRow :: Int -> Int -> Int -> Map Int [Int] -> String
+createRow r c cs m
+    | (c-cs) == 0 = (getElem r c cs m) ++ "|"
+    | otherwise= (getElem r c cs m) ++ createRow r (c+1) cs m 
+
+
+{- printBoard -> Imprimeix el tauler de joc
+    
+    PARAMETRES: 
+        r   -> Nombre de fila per imprimir 
+        cs  -> Nombre de columnes 
+        m   -> Tauler que volem imprimir
+-}
+printBoard:: Int -> Int -> Map Int [Int] -> IO()
+printBoard 0 cs m = do
+    let h= createHeader cs
+    putStrLn $ h
+    let n= createColNum 1 cs
+    putStrLn $ n
+    
+printBoard r cs m= do
+    let h= createHeader cs
+    putStrLn $ h
+    let row= createRow r 1 cs m
+    putStrLn $ row
+    printBoard (r-1) cs m
+
+{- initGame -> Inicialitza el joc amb el tauler corresponent a part de crear els         jugardors pertinents
+    
+    PARAMETRES:
+        r   -> Nombre total de files
+        c   -> Nombre total de columnes
+-}
+initGame:: Int -> Int -> Int -> World
+initGame r c 1 = State r c (initBoard c) (Player 1 Human) (Player 2 Human)
+initGame r c 2 = State r c (initBoard c) (Player 1 Human) (Player 2 Rng)
+initGame r c 3 = State r c (initBoard c) (Player 1 Human) (Player 2 Greedy)
+initGame r c 4 = State r c (initBoard c) (Player 1 Human) (Player 2 Smart)
+
+
+{- runGame -> S'encarrega de controlar el funcionament del joc 
+    
+    PARAMETRES:
+        w -> Representa l'estat actual de la partida, el tamany del tauler, el tauler i els jugadors que hi participen
+-}
+runGame :: World -> IO()
+runGame w = do
+    
+    printBoard (row w) (col w) (board w)
+    
+    --putStrLn " "
     putStrLn " "
-    printBoard rs cs g4
     
-    putStrLn $ "Done"
+    putStrLn "Introdueix columna"
+    c1 <- getLine
+    let cn1 = string2Int c1
+    
+    let g= insert cn1 (pid(player1 w)) (board w)
+    
+--     putStrLn " "
+    putStrLn " "
+    
+    printBoard (row w) (col w) g
+    
+--     putStrLn " "
+    putStrLn " "
+    
+    putStrLn "Introdueix columna"
+    c2 <- getLine
+    let cn2 = string2Int c2
+    
+    let g2= insert cn2 (pid(player2 w)) g
+    
+    printBoard (row w) (col w) g2
+    
+--     putStrLn " "
+    putStrLn " "
+    
+    runGame (State (row w) (col w) g2 (player1 w) (player2 w))
