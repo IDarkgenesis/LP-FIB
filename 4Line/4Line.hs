@@ -1,3 +1,4 @@
+import System.Random
 import Data.Map (Map)
 import qualified Data.Map.Strict as Map
 
@@ -48,6 +49,16 @@ data State = NewState {    row :: Int,
 -- FUNCIONS --
 --------------
 
+randInt :: Int -> Int -> IO Int
+-- randInt low high is an IO action that returns a
+-- pseudo-random integer between low and high (both included).
+
+randInt low high = do
+    random <- randomIO :: IO Int
+    let result = low + random `mod` (high - low + 1)
+    return result
+
+
 {-  fromMaybe -> Permet extreure el contingut de un Maybe en cas de Just si no retorna un parametre per defecte definit a la funció
                  (Extret de la llibreria Data.Maybe)
     PARAMETRES:
@@ -75,6 +86,7 @@ string2Int s = read s ::Int
 int2String :: Int -> String
 int2String n = show n
 
+
 {- insert -> Insereix en un element la columna desitjada
     
     PARAMETRES:
@@ -85,6 +97,7 @@ int2String n = show n
 insert :: Int -> Int -> Map Int [Int] -> Map Int [Int]
 insert k nv m= Map.insertWith (++) k [nv] m
 
+
 {- find -> Retorna la columna desitjada del tauler
     
     PARAMETRES:
@@ -94,6 +107,37 @@ insert k nv m= Map.insertWith (++) k [nv] m
 find:: Int -> Map Int [Int] -> (Maybe [Int])
 find k m= Map.lookup k m
 
+
+{- getAvailabeCols -> Obté el nombre de columnes no plenes del tauler
+    
+    PARAMETRES:
+        r   -> Nombre total de files
+        c   -> Columna a consultar
+        cs  -> Nombre total de columnes
+        m   -> Representacio del tauler
+-}  
+getAvailabeCols :: Int -> Int -> Int -> Map Int [Int] -> [Int]
+getAvailabeCols r c cs m
+    | (c-cs) == 0  && r > size = [c]
+    | (c-cs) == 0 = []
+    | r > size  = [c] ++ getAvailabeCols r (c+1) cs m
+    | otherwise = getAvailabeCols r (c+1) cs m
+    where
+        size = length (fromMaybe [] (find c m)) 
+
+
+{- getFromList -> Obte l'element n essim de la llista
+    
+    PARAMETRES:
+        eid     -> Identificador de la posicio de l'element
+        list    -> Llista on buscar l'element n essim
+-}    
+getFromList :: Int -> [Int] -> Int
+getFromList eid list
+    | eid == 1 = (head list)
+    | otherwise = getFromList (eid-1) (tail list)
+
+    
 {- initBoard -> Inicialitza el tauler del joc
     
     PARAMETRES:
@@ -104,6 +148,7 @@ initBoard c = Map.fromList (map createCol [1..c])
     where
         createCol :: Int -> (Int, [Int])
         createCol n = (n , [])
+
         
 {- createColNum -> Crea una string que indica una vegada impres el tauler el identificador de cada columna
     
@@ -124,6 +169,7 @@ createColNum c cs
 createHeader :: Int -> String     
 createHeader 1 =  "+-+"
 createHeader n = "+-" ++ createHeader (n-1)
+
 
 {- selectPiece -> Donat un valor que representa un PID de un jugador determina la fitxa
     
@@ -146,6 +192,7 @@ getPiece r xs
     | (r - length(xs)) < 0 = getPiece r (tail xs)
     | (r - length(xs)) > 0 = "| "
     | (r - length(xs)) == 0 = selectPiece (head xs)    
+
     
 {- getElem -> Obté l'element del tauler en la posició 'r', 'c', les files estan idexades de major a menor
     
@@ -157,7 +204,8 @@ getPiece r xs
 -} 
 getElem :: Int -> Int -> Int -> Map Int [Int] -> String
 getElem r c cs m = getPiece r (fromMaybe [] (find c m))
-    
+
+
 {- createRow -> Crea una string que representa la fila donada
 
     PARAMETRES: 
@@ -193,10 +241,6 @@ printBoard r cs m= do
     putStrLn $ row
     printBoard (r-1) cs m    
 
-myPrint :: String -> IO ()
-myPrint s = print s
-
-
 
 {- winV -> Busca si hi ha una sequència de 4 fitxes iguals consecutives per saber si hi ha algun guanyador
     
@@ -220,8 +264,49 @@ winV c cs m
             | (length consec) > 0 && (head consec) == (head elms) = checkWinner (tail elms) ((head elms):consec)
             | otherwise = checkWinner (tail elms)  [(head elms)]
 
-moveAI :: Int -> Strats -> Map Int [Int] -> Map Int [Int]
-moveAI pid st m = m
+{- winH -> 
+-}
+winH :: Int -> Int -> Map Int [Int] -> Int
+winH r cs m
+    | r == 1 = win
+    | otherwise = win + (winH (r-1) cs m)
+    where
+        win= checkWinner r 1 cs [] m
+        checkWinner :: Int -> Int -> Int -> [Int] -> Map Int [Int] -> Int
+        checkWinner r c cs consec m 
+            | (c-cs) == 0 = case lenConsec of
+                                3 -> case match of
+                                          True  -> obj
+                                          False -> 0
+                                n -> 0
+            
+            | otherwise = case lenConsec of
+                               3 -> case match of
+                                         True  -> obj
+                                         False -> case isZero of
+                                                       True  -> checkWinner r (c+1) cs [] m
+                                                       False -> checkWinner r (c+1) cs [obj] m
+                               0 -> case isZero of
+                                         True  -> checkWinner r (c+1) cs [] m
+                                         False -> checkWinner r (c+1) cs [obj] m
+                               n -> case match of
+                                         True  -> checkWinner r (c+1) cs (obj:consec) m
+                                         False -> case isZero of
+                                                       True  -> checkWinner r (c+1) cs [] m
+                                                       False -> checkWinner r (c+1) cs [obj] m
+            where
+               lenConsec = length consec
+               match = (obj == (head consec))
+               isZero = (obj == 0)
+               obj = getPieceInt r (fromMaybe [] (find c m))
+               getPieceInt :: Int -> [Int] -> Int
+               getPieceInt r xs
+                   | (r - length(xs)) < 0  = getPieceInt r (tail xs)
+                   | (r - length(xs)) > 0  = 0
+                   | (r - length(xs)) == 0 = (head xs)  
+               
+anyWin :: Int -> Int -> Map Int [Int] -> Int
+anyWin r c m = (winV 1 c m) + (winH r c m)
 
 {- initGame -> Inicialitza el joc amb el tauler corresponent a part de crear els         jugardors pertinents
     
@@ -235,6 +320,12 @@ initGame r c 2 = NewState r c (initBoard c) (Player 1 Human) (Player 2 Rng)
 initGame r c 3 = NewState r c (initBoard c) (Player 1 Human) (Player 2 Greedy)
 initGame r c 4 = NewState r c (initBoard c) (Player 1 Human) (Player 2 Smart)
 
+
+{- playHuman -> Permet al jugador Huma seleccionar la seva jugada
+    
+    PARAMETRES:
+        w       -> Representa l'estat actual de la partida, el tamany del tauler, el tauler i els jugadors que hi participen
+-}
 playHuman :: State -> IO ()
 playHuman w = do
     
@@ -244,10 +335,11 @@ playHuman w = do
     
     putStrLn "Introdueix columna"
     c1 <- getLine
-    let cn1 = string2Int c1
-    let g= insert cn1 (pid(player1 w)) (board w)
-    let final=  winV 0 (col w) g
+    let cn = string2Int c1
+    let g= insert cn (pid(player1 w)) (board w)
     
+    let final= anyWin (row w) (col w) g
+
     putStrLn " "
     
     printBoard (row w) (col w) g
@@ -256,14 +348,46 @@ playHuman w = do
     
     
     if  final > 0
-       then print "Game over !"
+       then print ("Player " ++ (int2String (pid(player1 w))) ++ " wins !")
+       else runGame (NewState (row w) (col w) g (player2 w) (player1 w))
+
+       
+{- playAI -> Depenent del tipus de estratègia executa una comanada de moviment
+    
+    PARAMETRES:
+        st      -> Indica el tipus d'estratègia que segueix el jugador indicat
+        w       -> Representa l'estat actual de la partida, el tamany del tauler, el tauler i els jugadors que hi participen
+-}
+playAI :: Strats -> State -> IO ()
+playAI Rng w = do
+    printBoard (row w) (col w) (board w)
+    
+    putStrLn " "
+    
+    let ac= getAvailabeCols (row w) 1 (col w) (board w)
+        
+    r1 <- randInt 1 (length ac)
+    
+    let cn = getFromList r1 ac
+    
+    let g= insert cn (pid(player1 w)) (board w)
+    
+    let final= anyWin (row w) (col w) g
+    
+    putStrLn " "
+    
+    printBoard (row w) (col w) g
+    
+    putStrLn " "
+    
+    if  final > 0
+       then print ("Player " ++ (int2String (pid(player1 w))) ++ " wins !")
        else runGame (NewState (row w) (col w) g (player2 w) (player1 w))
     
+playAI st w = print "F"
 
-playAI :: State -> IO ()
-playAI w = print "F"
 
-{- runGame -> S'encarrega de controlar el funcionament del joc 
+{- runGame -> S'encarrega de executar la jugada corresponent al jugador que li pertoca el torn
     
     PARAMETRES:
         w -> Representa l'estat actual de la partida, el tamany del tauler, el tauler i els jugadors que hi participen
@@ -271,6 +395,11 @@ playAI w = print "F"
 runGame :: State -> IO ()
 runGame w = do
     
-    if (strat(player1 w)) == Human
-        then playHuman (NewState (row w) (col w) (board w) (player1 w) (player2 w))
-        else playAI (NewState (row w) (col w) (board w) (player1 w) (player2 w))
+    let ac= getAvailabeCols (row w) 1 (col w) (board w)
+    
+    if (length ac) == 0
+       then print "Draw ! Board is full !"
+       else 
+        if (strat(player1 w)) == Human
+           then playHuman (NewState (row w) (col w) (board w) (player1 w) (player2 w))
+           else playAI (strat(player1 w)) (NewState (row w) (col w) (board w) (player1 w) (player2 w))
