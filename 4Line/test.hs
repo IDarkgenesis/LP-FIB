@@ -1,9 +1,8 @@
 data Cat = Cat {fs :: String,
-                ls :: String
-                } deriving (Show)
+                ls :: String,
+                st :: Strat
+                }
+data Strat = Human | Rng
+    deriving (Eq)
 
-checkLen :: [Int] -> Bool
-checkLen chk = case len of
-                    3  -> True
-                where
-                    len= length chk
+

@@ -33,6 +33,7 @@ main = do
 --------------------------
 
 data Strats= Human | Rng | Greedy | Smart
+    deriving (Eq)
 
 data Player = Player {  pid :: Int, 
                         strat :: Strats}
@@ -190,17 +191,20 @@ printBoard r cs m= do
     putStrLn $ h
     let row= createRow r 1 cs m
     putStrLn $ row
-    printBoard (r-1) cs m
+    printBoard (r-1) cs m    
 
-checkWinner :: [Int] -> [Int] ->Int
-checkWinner elms consec
-        | (length elms) == 0 && (length consec) == 0 = 0
-        | (length consec) == 4 = (head consec)
-        | (length elms) == 0 && (length consec) > 0 = 0
-        | (length consec) > 0 && (head consec) == (head elms) = checkWinner (tail elms) ((head elms):consec)
-        | otherwise = checkWinner (tail elms)  [(head elms)]
+myPrint :: String -> IO ()
+myPrint s = print s
+
+
+
+{- winV -> Busca si hi ha una sequència de 4 fitxes iguals consecutives per saber si hi ha algun guanyador
     
-    
+    PARAMETRES:
+        c   -> Columna a comprovar
+        cs  -> Nombre total de columnes
+        m   -> Tauler actual on buscar un guanyador
+-}
 winV :: Int -> Int -> Map Int [Int] -> Int
 winV c cs m 
     | (c-cs) == 0 = win
@@ -208,7 +212,17 @@ winV c cs m
     | otherwise = win
     where
         win = checkWinner (fromMaybe [] (find c m)) []
-        
+        checkWinner :: [Int] -> [Int] ->Int
+        checkWinner elms consec
+            | (length elms) == 0 && (length consec) == 0 = 0
+            | (length consec) == 4 = (head consec)
+            | (length elms) == 0 && (length consec) > 0 = 0
+            | (length consec) > 0 && (head consec) == (head elms) = checkWinner (tail elms) ((head elms):consec)
+            | otherwise = checkWinner (tail elms)  [(head elms)]
+
+moveAI :: Int -> Strats -> Map Int [Int] -> Map Int [Int]
+moveAI pid st m = m
+
 {- initGame -> Inicialitza el joc amb el tauler corresponent a part de crear els         jugardors pertinents
     
     PARAMETRES:
@@ -221,6 +235,33 @@ initGame r c 2 = NewState r c (initBoard c) (Player 1 Human) (Player 2 Rng)
 initGame r c 3 = NewState r c (initBoard c) (Player 1 Human) (Player 2 Greedy)
 initGame r c 4 = NewState r c (initBoard c) (Player 1 Human) (Player 2 Smart)
 
+playHuman :: State -> IO ()
+playHuman w = do
+    
+    printBoard (row w) (col w) (board w)
+    
+    putStrLn " "
+    
+    putStrLn "Introdueix columna"
+    c1 <- getLine
+    let cn1 = string2Int c1
+    let g= insert cn1 (pid(player1 w)) (board w)
+    let final=  winV 0 (col w) g
+    
+    putStrLn " "
+    
+    printBoard (row w) (col w) g
+    
+    putStrLn " "
+    
+    
+    if  final > 0
+       then print "Game over !"
+       else runGame (NewState (row w) (col w) g (player2 w) (player1 w))
+    
+
+playAI :: State -> IO ()
+playAI w = print "F"
 
 {- runGame -> S'encarrega de controlar el funcionament del joc 
     
@@ -230,24 +271,6 @@ initGame r c 4 = NewState r c (initBoard c) (Player 1 Human) (Player 2 Smart)
 runGame :: State -> IO ()
 runGame w = do
     
-    printBoard (row w) (col w) (board w)
-    
-    putStrLn " "
-    
-    putStrLn "Introdueix columna"
-    c1 <- getLine
-    let cn1 = string2Int c1
-    
-    let g= insert cn1 (pid(player1 w)) (board w)
-    
-    putStrLn " "
-    
-    printBoard (row w) (col w) g
-    
-    putStrLn " "
-    
-    let final=  winV 0 (col w) g
-    
-    if  final > 0
-       then print "Game over !"
-       else runGame (NewState (row w) (col w) g (player2 w) (player1 w))
+    if (strat(player1 w)) == Human
+        then playHuman (NewState (row w) (col w) (board w) (player1 w) (player2 w))
+        else playAI (NewState (row w) (col w) (board w) (player1 w) (player2 w))
