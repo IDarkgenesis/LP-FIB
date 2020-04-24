@@ -42,7 +42,8 @@ data Direction= Up | Down
 data Player = Player {  pid :: Int, 
                         strat :: Strats}
 
-data State = NewState {    row :: Int,
+data State = NewState { turn :: Int,
+                        row :: Int,
                         col :: Int,
                         board :: Map Int [Int], 
                         player1 :: Player,
@@ -252,17 +253,17 @@ printBoard r cs m= do
         cs  -> Nombre total de columnes
         m   -> Tauler actual on buscar un guanyador
 -}
-winV :: Int -> Int -> Map Int [Int] -> Int
-winV c cs m 
+winV :: Int -> Int -> Int -> Map Int [Int] -> Int
+winV c cs len m 
     | (c-cs) == 0 = win
-    | win == 0 = winV (c+1) cs m
+    | win == 0 = winV (c+1) cs len m
     | otherwise = win
     where
         win = checkWinner (fromMaybe [] (find c m)) []
         checkWinner :: [Int] -> [Int] ->Int
         checkWinner elms consec
             | (length elms) == 0 && (length consec) == 0 = 0
-            | (length consec) == 4 = (head consec)
+            | (length consec) == len = (head consec)
             | (length elms) == 0 && (length consec) > 0 = 0
             | (length consec) > 0 && (head consec) == (head elms) = checkWinner (tail elms) ((head elms):consec)
             | otherwise = checkWinner (tail elms)  [(head elms)]
@@ -276,169 +277,188 @@ getPieceInt r xs
             
 {- winH -> 
 -}
-winH :: Int -> Int -> Map Int [Int] -> Int
-winH r cs m
+winH :: Int -> Int -> Int -> Map Int [Int] -> Int
+winH r cs len m
     | r == 1 = win
     | otherwise = win + (winH (r-1) cs m)
     where
         win= checkWinner r 1 cs [] m
-        checkWinner :: Int -> Int -> Int -> [Int] -> Map Int [Int] -> Int
-        checkWinner r c cs consec m 
-            | (c-cs) == 0 = case lenConsec of
-                                3 -> case match of
+        checkWinner :: Int -> Int -> Int -> [Int] -> Int -> Map Int [Int] -> Int
+        checkWinner r c cs consec len m 
+            | (c-cs) == 0 = case sizConsec of
+                                len -> case match of
                                           True  -> obj
                                           False -> 0
                                 n -> 0
             
-            | otherwise = case lenConsec of
-                               3 -> case match of
+            | otherwise = case sizConsec of
+                               antLen -> case match of
                                          True  -> obj
                                          False -> case isZero of
-                                                       True  -> checkWinner r (c+1) cs [] m
-                                                       False -> checkWinner r (c+1) cs [obj] m
+                                                       True  -> checkWinner r (c+1) cs [] len m
+                                                       False -> checkWinner r (c+1) cs [obj] len m
                                0 -> case isZero of
-                                         True  -> checkWinner r (c+1) cs [] m
-                                         False -> checkWinner r (c+1) cs [obj] m
+                                         True  -> checkWinner r (c+1) cs [] len m
+                                         False -> checkWinner r (c+1) cs [obj] len m
                                n -> case match of
-                                         True  -> checkWinner r (c+1) cs (obj:consec) m
+                                         True  -> checkWinner r (c+1) cs (obj:consec) len m
                                          False -> case isZero of
-                                                       True  -> checkWinner r (c+1) cs [] m
-                                                       False -> checkWinner r (c+1) cs [obj] m
+                                                       True  -> checkWinner r (c+1) cs [] len m
+                                                       False -> checkWinner r (c+1) cs [obj] len m
             where
-               lenConsec = length consec
+               sizConsec = length consec
                match = (obj == (head consec))
                isZero = (obj == 0)
                obj = getPieceInt r (fromMaybe [] (find c m))
 
 ------------------------------------------------------------------------------------------
-winDF :: Int -> Int -> Int -> Int -> Direction -> [Int] -> Map Int [Int] -> Int
-winDF r c rs cs dir consec m
+winDF :: Int -> Int -> Int -> Int -> Direction -> [Int] -> Int -> Map Int [Int] -> Int
+winDF r c rs cs dir consec len m
     | r == 1 && c == cs = 0
-    | dir == Up && (c+1) > cs = case lenConsec of
-                                     3 -> case match of
+    | dir == Up && (c+1) > cs = case sizConsec of
+                                     antLen -> case match of
                                                True  -> obj
-                                               False -> winDF (r-1) c rs cs Down [] m
-                                     n -> winDF (r-1) c rs cs Down [] m
+                                               False -> winDF (r-1) c rs cs Down [] len m
+                                     n -> winDF (r-1) c rs cs Down [] len m
     
-    | dir == Up && (r+1) > rs =  case lenConsec of
-                                     3 -> case match of
+    | dir == Up && (r+1) > rs =  case sizConsec of
+                                     antLen -> case match of
                                                True  -> obj
-                                               False -> winDF r (c+1) rs cs Down [] m
-                                     n -> winDF r (c+1) rs cs Down [] m
+                                               False -> winDF r (c+1) rs cs Down [] len m
+                                     n -> winDF r (c+1) rs cs Down [] len m
     
-    | dir == Down && (r-1) < 1 = case lenConsec of
-                                      3 -> case match of
+    | dir == Down && (r-1) < 1 = case sizConsec of
+                                      antLen -> case match of
                                                 True  -> obj
-                                                False -> winDF r (c+1) rs cs Up [] m
-                                      n -> winDF r (c+1) rs cs Up [] m
+                                                False -> winDF r (c+1) rs cs Up [] len m
+                                      n -> winDF r (c+1) rs cs Up [] len m
 
-    | dir == Down && (c-1) < 1 = case lenConsec of
-                                      3 -> case match of
+    | dir == Down && (c-1) < 1 = case sizConsec of
+                                      antLen -> case match of
                                                 True  -> obj
-                                                False -> winDF (r-1) c rs cs Up [] m
-                                      n -> winDF r (r-1) rs cs Up [] m
+                                                False -> winDF (r-1) c rs cs Up [] len m
+                                      n -> winDF r (r-1) rs cs Up [] len m
     
-    | dir == Up = case lenConsec of
-                       3 -> case match of
+    | dir == Up = case sizConsec of
+                       antLen -> case match of
                                  True  -> obj
                                  False -> case isZero of
-                                               True  -> winDF (r+1) (c+1) rs cs Up [] m
-                                               False -> winDF (r+1) (c+1) rs cs Up [obj] m
+                                               True  -> winDF (r+1) (c+1) rs cs Up [] len m
+                                               False -> winDF (r+1) (c+1) rs cs Up [obj] len m
                        0 -> case isZero of
-                                 True  -> winDF (r+1) (c+1) rs cs Up [] m
-                                 False -> winDF (r+1) (c+1) rs cs Up [obj] m
+                                 True  -> winDF (r+1) (c+1) rs cs Up [] len m
+                                 False -> winDF (r+1) (c+1) rs cs Up [obj] len m
                        n -> case match of
-                                 True  -> winDF (r+1) (c+1) rs cs Up (obj:consec) m
+                                 True  -> winDF (r+1) (c+1) rs cs Up (obj:consec) len m
                                  False -> case isZero of
-                                               True  -> winDF (r+1) (c+1) rs cs Up [] m
-                                               False -> winDF (r+1) (c+1) rs cs Up [obj] m
+                                               True  -> winDF (r+1) (c+1) rs cs Up [] len m
+                                               False -> winDF (r+1) (c+1) rs cs Up [obj] len m
                                                
-     | dir == Down = case lenConsec of
-                       3 -> case match of
+     | dir == Down = case sizConsec of
+                       antLen -> case match of
                                  True  -> obj
                                  False -> case isZero of
-                                               True  -> winDF (r-1) (c-1) rs cs Down [] m
-                                               False -> winDF (r-1) (c-1) rs cs Down [obj] m
+                                               True  -> winDF (r-1) (c-1) rs cs Down [] len m
+                                               False -> winDF (r-1) (c-1) rs cs Down [obj] len m
                        0 -> case isZero of
-                                 True  -> winDF (r-1) (c-1) rs cs Down [] m
-                                 False -> winDF (r-1) (c-1) rs cs Down [obj] m
+                                 True  -> winDF (r-1) (c-1) rs cs Down [] len m
+                                 False -> winDF (r-1) (c-1) rs cs Down [obj] len m
                        n -> case match of
-                                 True  -> winDF (r-1) (c-1) rs cs Down (obj:consec) m
+                                 True  -> winDF (r-1) (c-1) rs cs Down (obj:consec) len m
                                  False -> case isZero of
-                                               True  -> winDF (r-1) (c-1) rs cs Down [] m
-                                               False -> winDF (r-1) (c-1) rs cs Down [obj] m
+                                               True  -> winDF (r-1) (c-1) rs cs Down [] len m
+                                               False -> winDF (r-1) (c-1) rs cs Down [obj] len m
      where
-         lenConsec = length consec
+         sizConsec = length consec
          match = (obj == (head consec))
          isZero = (obj == 0)
          obj = getPieceInt r (fromMaybe [] (find c m))
-         
+{-
+ case (sizConsec < antLen) of 
+                True  -> case sizConsec of 
+                            
+                            0 -> case isZero of
+                                 True  -> winDF (r-1) (c-1) rs cs Down [] len m
+                                 False -> winDF (r-1) (c-1) rs cs Down [obj] len m
+                                 
+                            n -> case match of
+                                 True  -> winDF (r-1) (c-1) rs cs Down (obj:consec) len m
+                                 False -> case isZero of
+                                               True  -> winDF (r-1) (c-1) rs cs Down [] len m
+                                               False -> winDF (r-1) (c-1) rs cs Down [obj] len m
+                False -> case match of
+                                 True  -> obj
+                                 False -> case isZero of
+                                               True  -> winDF (r-1) (c-1) rs cs Down [] len m
+                                               False -> winDF (r-1) (c-1) rs cs Down [obj] len m
+   -}          
 ------------------------------------------------------------------------------------------
-winDB :: Int -> Int -> Int -> Int -> Direction -> [Int] -> Map Int [Int] -> Int
-winDB r c rs cs dir consec m
+winDB :: Int -> Int -> Int -> Int -> Direction -> [Int] -> Int -> Map Int [Int] -> Int
+winDB r c rs cs dir consec len m
     | r == 1 && c == 1 = 0
-    | dir == Down && (r-1) < 1 = case lenConsec of
-                                      3 -> case match of
+    | dir == Down && (r-1) < 1 = case sizConsec of
+                                      antLen -> case match of
                                                 True  -> obj
-                                                False -> winDB r (c-1) rs cs Up [] m
-                                      n -> winDB r (c-1) rs cs Up [] m
+                                                False -> winDB r (c-1) rs cs Up [] len m
+                                      n -> winDB r (c-1) rs cs Up [] len m
                                       
-    | dir == Down && (c+1) > cs = case lenConsec of
-                                      3 -> case match of
+    | dir == Down && (c+1) > cs = case sizConsec of
+                                      antLen -> case match of
                                                 True  -> obj
-                                                False -> winDB (r+1) c rs cs Up [] m
-                                      n -> winDB r (r+1) rs cs Up [] m
+                                                False -> winDB (r+1) c rs cs Up [] len m
+                                      n -> winDB r (r+1) rs cs Up [] len m
     
-    | dir == Up && (r+1) > rs =  case lenConsec of
-                                     3 -> case match of
+    | dir == Up && (r+1) > rs =  case sizConsec of
+                                     antLen -> case match of
                                                True  -> obj
-                                               False -> winDB r (c-1) rs cs Down [] m
-                                     n -> winDB r (c-1) rs cs Down [] m
+                                               False -> winDB r (c-1) rs cs Down [] len m
+                                     n -> winDB r (c-1) rs cs Down [] len m
     
-    | dir == Up && (c-1) < 1 = case lenConsec of
-                                     3 -> case match of
+    | dir == Up && (c-1) < 1 = case sizConsec of
+                                     antLen -> case match of
                                                True  -> obj
-                                               False -> winDB (r-1) c rs cs Down [] m
-                                     n -> winDB (r-1) c rs cs Down [] m
+                                               False -> winDB (r-1) c rs cs Down [] len m
+                                     n -> winDB (r-1) c rs cs Down [] len m
 
     
-    | dir == Up = case lenConsec of
-                       3 -> case match of
+    | dir == Up = case sizConsec of
+                       antLen -> case match of
                                  True  -> obj
                                  False -> case isZero of
-                                               True  -> winDB (r+1) (c-1) rs cs Up [] m
-                                               False -> winDB (r+1) (c-1) rs cs Up [obj] m
+                                               True  -> winDB (r+1) (c-1) rs cs Up [] len m
+                                               False -> winDB (r+1) (c-1) rs cs Up [obj] len m
                        0 -> case isZero of
-                                 True  -> winDB (r+1) (c-1) rs cs Up [] m
-                                 False -> winDB (r+1) (c-1) rs cs Up [obj] m
+                                 True  -> winDB (r+1) (c-1) rs cs Up [] len m
+                                 False -> winDB (r+1) (c-1) rs cs Up [obj] len m
                        n -> case match of
-                                 True  -> winDB (r+1) (c-1) rs cs Up (obj:consec) m
+                                 True  -> winDB (r+1) (c-1) rs cs Up (obj:consec) len m
                                  False -> case isZero of
-                                               True  -> winDB (r+1) (c-1) rs cs Up [] m
-                                               False -> winDB (r+1) (c-1) rs cs Up [obj] m
+                                               True  -> winDB (r+1) (c-1) rs cs Up [] len m
+                                               False -> winDB (r+1) (c-1) rs cs Up [obj] len m
                                                
-     | dir == Down = case lenConsec of
-                       3 -> case match of
+     | dir == Down = case sizConsec of
+                       antLen -> case match of
                                  True  -> obj
                                  False -> case isZero of
-                                               True  -> winDB (r-1) (c+1) rs cs Down [] m
-                                               False -> winDB (r-1) (c+1) rs cs Down [obj] m
+                                               True  -> winDB (r-1) (c+1) rs cs Down [] len m
+                                               False -> winDB (r-1) (c+1) rs cs Down [obj] len m
                        0 -> case isZero of
-                                 True  -> winDB (r-1) (c+1) rs cs Down [] m
-                                 False -> winDB (r-1) (c+1) rs cs Down [obj] m
+                                 True  -> winDB (r-1) (c+1) rs cs Down [] len m
+                                 False -> winDB (r-1) (c+1) rs cs Down [obj] len m
                        n -> case match of
-                                 True  -> winDB (r-1) (c+1) rs cs Down (obj:consec) m
+                                 True  -> winDB (r-1) (c+1) rs cs Down (obj:consec) len m
                                  False -> case isZero of
-                                               True  -> winDB (r-1) (c+1) rs cs Down [] m
-                                               False -> winDB (r-1) (c+1) rs cs Down [obj] m
+                                               True  -> winDB (r-1) (c+1) rs cs Down [] len m
+                                               False -> winDB (r-1) (c+1) rs cs Down [obj] len m
      where
-         lenConsec = length consec
+         sizConsec = length consec
          match = (obj == (head consec))
+         antLen = (len-1)
          isZero = (obj == 0)
          obj = getPieceInt r (fromMaybe [] (find c m))
          
-anyWin :: Int -> Int -> Map Int [Int] -> Int
-anyWin r c m = (winV 1 c m) + (winH r c m) + (winDF r 1 r c Up [] m) + (winDB r c r c Up [] m)
+anyWin :: Int -> Int -> Int -> Map Int [Int] -> Int
+anyWin r c len m = (winV 1 c len m) + (winH r c len m) + (winDF r 1 r c Up [] len m) + (winDB r c r c Up [] len m)
 
 {- initGame -> Inicialitza el joc amb el tauler corresponent a part de crear els         jugardors pertinents
     
@@ -447,10 +467,10 @@ anyWin r c m = (winV 1 c m) + (winH r c m) + (winDF r 1 r c Up [] m) + (winDB r 
         c   -> Nombre total de columnes
 -}
 initGame:: Int -> Int -> Int -> State
-initGame r c 1 = NewState r c (initBoard c) (Player 1 Human) (Player 2 Human)
-initGame r c 2 = NewState r c (initBoard c) (Player 1 Human) (Player 2 Rng)
-initGame r c 3 = NewState r c (initBoard c) (Player 1 Human) (Player 2 Greedy)
-initGame r c 4 = NewState r c (initBoard c) (Player 1 Human) (Player 2 Smart)
+initGame r c 1 = NewState 1 r c (initBoard c) (Player 1 Human) (Player 2 Human)
+initGame r c 2 = NewState 1 r c (initBoard c) (Player 1 Human) (Player 2 Rng)
+initGame r c 3 = NewState 1 r c (initBoard c) (Player 1 Human) (Player 2 Greedy)
+initGame r c 4 = NewState 1 r c (initBoard c) (Player 1 Human) (Player 2 Smart)
 
 
 {- playHuman -> Permet al jugador Huma seleccionar la seva jugada
@@ -461,8 +481,6 @@ initGame r c 4 = NewState r c (initBoard c) (Player 1 Human) (Player 2 Smart)
 playHuman :: State -> IO ()
 playHuman w = do
     
-    printBoard (row w) (col w) (board w)
-    
     putStrLn " "
     
     putStrLn "Introdueix columna"
@@ -470,7 +488,7 @@ playHuman w = do
     let cn = string2Int c1
     let g= insert cn (pid(player1 w)) (board w)
     
-    let final= anyWin (row w) (col w) g
+    let final= anyWin (row w) (col w) 4 g
 
     putStrLn " "
     
@@ -481,7 +499,7 @@ playHuman w = do
     
     if  final > 0
        then print ("Player " ++ (int2String (pid(player1 w))) ++ " wins !")
-       else runGame (NewState (row w) (col w) g (player2 w) (player1 w))
+       else runGame (NewState ((turn w)+1) (row w) (col w) g (player2 w) (player1 w))
 
        
 {- playAI -> Depenent del tipus de estratègia executa una comanada de moviment
@@ -492,7 +510,6 @@ playHuman w = do
 -}
 playAI :: Strats -> State -> IO ()
 playAI Rng w = do
-    printBoard (row w) (col w) (board w)
     
     putStrLn " "
     
@@ -504,7 +521,7 @@ playAI Rng w = do
     
     let g= insert cn (pid(player1 w)) (board w)
     
-    let final= anyWin (row w) (col w) g
+    let final= anyWin (row w) (col w) 4 g
     
     putStrLn " "
     
@@ -514,8 +531,11 @@ playAI Rng w = do
     
     if  final > 0
        then print ("Player " ++ (int2String (pid(player1 w))) ++ " wins !")
-       else runGame (NewState (row w) (col w) g (player2 w) (player1 w))
+       else runGame (NewState ((turn w)+1) (row w) (col w) g (player2 w) (player1 w))
+-- cridar funcio winOther (crida funcio chekc win i retorna pid i pos on pot guanyar, aka si diagonal agafa pos de dreta) si no comprovam quina pos puc "guanyar" amb linies de dist var 1->4
+playAI Greedy w = do
     
+
 playAI st w = print "F"
 
 
@@ -527,11 +547,15 @@ playAI st w = print "F"
 runGame :: State -> IO ()
 runGame w = do
     
+    if (turn w) == 1
+       then printBoard (row w) (col w) (board w)
+       else putStrLn " "
+       
     let ac= getAvailabeCols (row w) 1 (col w) (board w)
     
     if (length ac) == 0
        then print "Draw ! Board is full !"
        else 
         if (strat(player1 w)) == Human
-           then playHuman (NewState (row w) (col w) (board w) (player1 w) (player2 w))
-           else playAI (strat(player1 w)) (NewState (row w) (col w) (board w) (player1 w) (player2 w))
+           then playHuman (NewState ((turn w)+1) (row w) (col w) (board w) (player1 w) (player2 w))
+           else playAI (strat(player1 w)) (NewState ((turn w)+1) (row w) (col w) (board w) (player1 w) (player2 w))
