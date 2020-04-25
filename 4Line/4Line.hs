@@ -253,13 +253,17 @@ printBoard r cs m= do
         cs  -> Nombre total de columnes
         m   -> Tauler actual on buscar un guanyador
 -}
-winV :: Int -> Int -> Int -> Map Int [Int] -> Int
-winV c cs len m 
-    | (c-cs) == 0 = win
-    | win == 0 = winV (c+1) cs len m
-    | otherwise = win
+winV :: Int -> Int -> Int -> Int -> Map Int [Int] -> (Int,Int)
+winV c cs rs len m 
+    | (c-cs) == 0 = (win,nextPos)
+    | win == 0 = winV (c+1) cs rs len m
+    | otherwise = (win,nextPos)
     where
         win = checkWinner (fromMaybe [] (find c m)) []
+        nextPos :: Int
+        nextPos 
+            | (length (fromMaybe [] (find c m))) == rs = 0
+            | otherwise = c
         checkWinner :: [Int] -> [Int] ->Int
         checkWinner elms consec
             | (length elms) == 0 && (length consec) == 0 = 0
@@ -288,19 +292,20 @@ getPieceInt r xs
         len     -> Longitud de la sequència a bucar
         m       -> Tauler on busquem la sequència
 -}
-winH :: Int -> Int -> Int -> Map Int [Int] -> Int
+winH :: Int -> Int -> Int -> Map Int [Int] -> (Int,Int)
 winH r cs len m
     | r == 1 = win
-    | otherwise = win + (winH (r-1) cs len m)
+    | fst win == 0 = (winH (r-1) cs len m)
+    | otherwise = win
     where
         win= checkWinner r 1 cs [] len m
-        checkWinner :: Int -> Int -> Int -> [Int] -> Int -> Map Int [Int] -> Int
+        checkWinner :: Int -> Int -> Int -> [Int] -> Int -> Map Int [Int] -> (Int,Int)
         checkWinner r c cs consec len m 
             | (c-cs) == 0 = case (sizConsec < lessLen) of
-                                 True  -> 0
+                                 True  -> (0,0)
                                  False -> case match of
-                                               True  -> obj
-                                               False -> 0
+                                               True  -> (obj,nextPos)
+                                               False -> (0,0)
             
             | otherwise = case (sizConsec < lessLen) of
                                
@@ -317,7 +322,7 @@ winH r cs len m
                                                                      False -> checkWinner r (c+1) cs [obj] len m
                                
                                False -> case match of
-                                             True  -> obj
+                                             True  -> (obj,nextPos)
                                              False -> case isZero of
                                                            True  -> checkWinner r (c+1) cs [] len m
                                                            False -> checkWinner r (c+1) cs [obj] len m
@@ -328,6 +333,14 @@ winH r cs len m
                lessLen = (len-1)
                isZero = (obj == 0)
                obj = getPieceInt r (fromMaybe [] (find c m))
+               nextPos :: Int
+               nextPos
+                   | (c+1) < cs && r == 1 && (getPieceInt r (fromMaybe [] (find (c+1) m))) == 0 = (c+1)
+                   | (c+1) < cs && r > 1  && (getPieceInt (r-1) (fromMaybe [] (find (c+1) m))) /= 0 && (getPieceInt r (fromMaybe [] (find (c+1) m))) == 0 = (c+1)
+                   | (c-len) >= 1 && r == 1 && (getPieceInt r (fromMaybe [] (find (c-len) m))) == 0 = (c-len)
+                   | (c-len) >= 1 && r > 1 && (getPieceInt (r-1) (fromMaybe [] (find (c-len) m))) /= 0 && (getPieceInt r (fromMaybe [] (find (c-len) m))) == 0 = (c-len)
+                   | otherwise = 0
+               
                
 {- winDF -> Busca en la direccio de les digaonals inverses una sequència de len elements consecutius iguals per saber si algu hi ha un guanyador amb len fitxes
             (L'ordre de les guardes importa degut a que en les cantonades del tauler es pot seguir executant i no acabar mai)
@@ -339,34 +352,35 @@ winH r cs len m
         cs      -> Nombre total de columnes
         dir     -> Direcco en la que ens movem dins del tauler per comprovar si hi ha guanyador
         consec  -> Llista on guardem els elements consecutius iguals trobats
-        len     -> Longitud de la cadena guanyadora
+        len     -> Longitud de la cadena guanyadora| | |O|X|O|
+
         m       -> Tauler on buscar el guanyador
 -}
-winDF :: Int -> Int -> Int -> Int -> Direction -> [Int] -> Int -> Map Int [Int] -> Int
+winDF :: Int -> Int -> Int -> Int -> Direction -> [Int] -> Int -> Map Int [Int] -> (Int,Int)
 winDF r c rs cs dir consec len m
-    | r == 1 && c == cs = 0
+    | r == 1 && c == cs = (0,0)
     | dir == Up && (c+1) > cs = case (sizConsec < lessLen) of
                                       True  -> winDF (r-1) c rs cs Down [] len m
                                       False -> case match of
-                                                    True  -> obj
+                                                    True  -> (obj,nextPos)
                                                     False -> winDF (r-1) c rs cs Down [] len m
                                                     
     | dir == Up && (r+1) > rs =  case (sizConsec < lessLen) of
                                       True  -> winDF r (c+1) rs cs Down [] len m
                                       False -> case match of
-                                                    True  -> obj
+                                                    True  -> (obj,nextPos)
                                                     False -> winDF r (c+1) rs cs Down [] len m
                                                
     | dir == Down && (r-1) < 1 = case (sizConsec < lessLen) of
                                       True  -> winDF r (c+1) rs cs Up [] len m
                                       False -> case match of
-                                                    True  -> obj
+                                                    True  -> (obj,nextPos)
                                                     False -> winDF r (c+1) rs cs Up [] len m
 
     | dir == Down && (c-1) < 1 = case (sizConsec < lessLen) of
                                       True  -> winDF r (r-1) rs cs Up [] len m
                                       False -> case match of
-                                                    True  -> obj
+                                                    True  -> (obj,nextPos)
                                                     False -> winDF (r-1) c rs cs Up [] len m
     
     | dir == Up = case (sizConsec < lessLen) of 
@@ -381,7 +395,7 @@ winDF r c rs cs dir consec len m
                                                                 True  -> winDF (r+1) (c+1) rs cs Up [] len m
                                                                 False -> winDF (r+1) (c+1) rs cs Up [obj] len m
                           False -> case match of
-                                        True  -> obj
+                                        True  -> (obj,nextPos)
                                         False -> case isZero of
                                                       True  -> winDF (r+1) (c+1) rs cs Up [] len m
                                                       False -> winDF (r+1) (c+1) rs cs Up [obj] len m
@@ -398,7 +412,7 @@ winDF r c rs cs dir consec len m
                                                                 True  -> winDF (r-1) (c-1) rs cs Down [] len m
                                                                 False -> winDF (r-1) (c-1) rs cs Down [obj] len m
                           False -> case match of
-                                        True  -> obj
+                                        True  -> (obj,nextPos)
                                         False -> case isZero of
                                                       True  -> winDF (r-1) (c-1) rs cs Down [] len m
                                                       False -> winDF (r-1) (c-1) rs cs Down [obj] len m
@@ -408,6 +422,13 @@ winDF r c rs cs dir consec len m
          lessLen = (len-1)
          isZero = (obj == 0)
          obj = getPieceInt r (fromMaybe [] (find c m))
+         nextPos :: Int
+         nextPos
+             | (c+1) <= cs && (r+1) <= rs && (getPieceInt r (fromMaybe [] (find (c+1) m))) /= 0 && (getPieceInt (r+1) (fromMaybe [] (find (c+1) m))) == 0 = (c+1)
+             | (c-len) >= 1 && (r-len) == 1 && (getPieceInt (r-len) (fromMaybe [] (find (c-len) m))) == 0 = (c-len)
+             | (c-len) >= 1 && (r-len) > 1 && (getPieceInt (r-len) (fromMaybe [] (find (c-len) m))) == 0 && (getPieceInt (r-len-1) (fromMaybe [] (find (c-len) m))) /= 0 = (c-len)
+             | otherwise = 0
+             
          
 {- winDB -> Busca en la direccio de les digaonals una sequència de len elements consecutius iguals per saber si algu hi ha un guanyador amb len fitxes
             (L'ordre de les guardes importa degut a que en les cantonades del tauler es pot seguir executant i no acabar mai)
@@ -422,49 +443,50 @@ winDF r c rs cs dir consec len m
         len     -> Longitud de la cadena guanyadora
         m       -> Tauler on buscar el guanyador
 -}          
-winDB :: Int -> Int -> Int -> Int -> Direction -> [Int] -> Int -> Map Int [Int] -> Int
+winDB :: Int -> Int -> Int -> Int -> Direction -> [Int] -> Int -> Map Int [Int] -> (Int,Int)
 winDB r c rs cs dir consec len m
-    | r == 1 && c == 1 = 0
+    | r == 1 && c == 1 = (0,0)
     | dir == Down && (r-1) < 1 = case (sizConsec < lessLen) of
                                       True  -> winDB r (c-1) rs cs Up [] len m
                                       False -> case match of
-                                                    True  -> obj
+                                                    True  -> (obj,nextPos)
                                                     False -> winDB r (c-1) rs cs Up [] len m
                                                     
     | dir == Down && (c+1) > cs = case (sizConsec < lessLen) of
-                                       True  -> winDB r (r+1) rs cs Up [] len m
+                                       True  -> winDB (r-1) c rs cs Up [] len m
                                        False -> case match of
-                                                     True  -> obj
-                                                     False -> winDB (r+1) c rs cs Up [] len m
-                                                
-    | dir == Up && (r+1) > rs =  case (sizConsec < lessLen) of
-                                      True  -> winDB r (c-1) rs cs Down [] len m
-                                      False -> case match of
-                                                    True  -> obj
-                                                    False -> winDB r (c-1) rs cs Down [] len m
-                                                    
+                                                     True  -> (obj,nextPos)
+                                                     False -> winDB (r-1) c rs cs Up [] len m
+    
     | dir == Up && (c-1) < 1 = case (sizConsec < lessLen) of
                                      True  -> winDB (r-1) c rs cs Down [] len m
                                      False -> case match of
-                                                   True  -> obj
+                                                   True  -> (obj,nextPos)
                                                    False -> winDB (r-1) c rs cs Down [] len m
     
+    | dir == Up && (r+1) > rs =  case (sizConsec < lessLen) of
+                                      True  -> winDB r (c-1) rs cs Down [] len m
+                                      False -> case match of
+                                                    True  -> (obj,nextPos)
+                                                    False -> winDB r (c-1) rs cs Down [] len m
+                                                    
+    
     | dir == Up = case (sizConsec < lessLen) of 
-                          True  -> case sizConsec of 
-                                        0 -> case isZero of
-                                                  True  -> winDB (r+1) (c-1) rs cs Up [] len m
-                                                  False -> winDB (r+1) (c-1) rs cs Up [obj] len m
+                       True  -> case sizConsec of 
+                                     0 -> case isZero of
+                                               True  -> winDB (r+1) (c-1) rs cs Up [] len m
+                                               False -> winDB (r+1) (c-1) rs cs Up [obj] len m
                                  
-                                        n -> case match of
-                                                  True  -> winDB (r+1) (c-1) rs cs Up (obj:consec) len m
-                                                  False -> case isZero of
-                                                                True  -> winDB (r+1) (c-1) rs cs Up [] len m
-                                                                False -> winDB (r+1) (c-1) rs cs Up [obj] len m
-                          False -> case match of
-                                        True  -> obj
-                                        False -> case isZero of
-                                                      True  -> winDB (r+1) (c-1) rs cs Up [] len m
-                                                      False -> winDB (r+1) (c-1) rs cs Up [obj] len m
+                                     n -> case match of
+                                               True  -> winDB (r+1) (c-1) rs cs Up (obj:consec) len m
+                                               False -> case isZero of
+                                                             True  -> winDB (r+1) (c-1) rs cs Up [] len m
+                                                             False -> winDB (r+1) (c-1) rs cs Up [obj] len m
+                       False -> case match of
+                                     True  -> (obj,nextPos)
+                                     False -> case isZero of
+                                                   True  -> winDB (r+1) (c-1) rs cs Up [] len m
+                                                   False -> winDB (r+1) (c-1) rs cs Up [obj] len m
                                                
      | dir == Down = case (sizConsec < lessLen) of 
                           True  -> case sizConsec of 
@@ -478,9 +500,9 @@ winDB r c rs cs dir consec len m
                                                                 True  -> winDB (r-1) (c+1) rs cs Down [] len m
                                                                 False -> winDB (r-1) (c+1) rs cs Down [obj] len m
                           False -> case match of
-                                        True  -> obj
+                                        True  -> (obj,nextPos)
                                         False -> case isZero of
-                                                      True  -> winDB (r-1) (c+1) rs cs Down [] len m
+                                                      True  -> winDB (r-1) (c+1) rs cs Down [0] len m
                                                       False -> winDB (r-1) (c+1) rs cs Down [obj] len m
      where
          sizConsec = length consec
@@ -488,19 +510,38 @@ winDB r c rs cs dir consec len m
          lessLen = (len-1)
          isZero = (obj == 0)
          obj = getPieceInt r (fromMaybe [] (find c m))
-
-{- anyWin -> Aquesta funcio retorna el Pid del jugador que ha aconseguit una sequència de len fitxes consecutives iguals
+         nextPos :: Int
+         nextPos
+             | (c-1) >= 1 && (r+1) <= rs && (getPieceInt r (fromMaybe [] (find (c-1) m))) /= 0 && (getPieceInt (r+1) (fromMaybe [] (find (c-1) m))) == 0 = (c-1)
+             | (c+len) <= cs && (r-len) == 1 && (getPieceInt (r-len) (fromMaybe [] (find (c+len) m))) == 0 = (c+len)
+             | (c+len) <= cs && (r-len) > 1 && (getPieceInt (r-len) (fromMaybe [] (find (c+len) m))) == 0 && (getPieceInt (r-len-1) (fromMaybe [] (find (c+len) m))) /= 0 = (c-len)
+             | otherwise = 0
+      
+{- checkWin -> Aquesta funcio retorna el Pid del jugador que ha aconseguit una sequència de len fitxes consecutives iguals i la seguent posicio si es posible per aconseguir len+1
     
     PARAMETRES:
         r   -> Nombre de files del tauler
         c   -> Nombre de columnes del tauler
         len -> Longitud de la sequència a bucar
         m   -> Tauler on busquem la sequència de longitud len
--}         
-anyWin :: Int -> Int -> Int -> Map Int [Int] -> Int
-anyWin r c len m = (winV 1 c len m) + (winH r c len m) + (winDF r 1 r c Up [] len m) + (winDB r c r c Up [] len m)
+-}
+checkWin :: Int -> Int -> Int -> Map Int [Int] -> (Int,Int)
+checkWin r c len m = case (fst vertical) of
+                          0 -> case (fst horizontal) of
+                                    0 -> case (fst diagonalF) of
+                                              0 -> diagonalB
+                                              _ -> diagonalF
+                                    _ -> horizontal
+                          _ -> vertical
+    where
+        vertical = (winV 1 c r len m)
+        horizontal = (winH r c len m)
+        diagonalF = (winDF r 1 r c Up [] len m)
+        diagonalB =(winDB r c r c Up [] len m)
 
-{- initGame -> Inicialitza el joc amb el tauler corresponent a part de crear els         jugardors pertinents
+
+
+{- initGame -> Inicialitza el joc amb el tauler corresponent a part de crear els jugardors pertinents
     
     PARAMETRES:
         r   -> Nombre total de files
@@ -508,9 +549,9 @@ anyWin r c len m = (winV 1 c len m) + (winH r c len m) + (winDF r 1 r c Up [] le
 -}
 initGame:: Int -> Int -> Int -> State
 initGame r c 1 = NewState 1 r c (initBoard c) (Player 1 Human) (Player 2 Human)
-initGame r c 2 = NewState 1 r c (initBoard c) (Player 1 Human) (Player 2 Rng)
-initGame r c 3 = NewState 1 r c (initBoard c) (Player 1 Human) (Player 2 Greedy)
-initGame r c 4 = NewState 1 r c (initBoard c) (Player 1 Human) (Player 2 Smart)
+initGame r c 2 = NewState 1 r c (initBoard c) (Player 1 Rng)   (Player 2 Human) 
+initGame r c 3 = NewState 1 r c (initBoard c) (Player 1 Greedy)(Player 2 Human)
+initGame r c 4 = NewState 1 r c (initBoard c) (Player 1 Smart) (Player 2 Human)
 
 
 {- playHuman -> Permet al jugador Huma seleccionar la seva jugada
@@ -528,7 +569,7 @@ playHuman w = do
     let cn = string2Int c1
     let g= insert cn (pid(player1 w)) (board w)
     
-    let final= anyWin (row w) (col w) 4 g
+    let final= fst(checkWin (row w) (col w) 4 g)
 
     putStrLn " "
     
@@ -540,8 +581,7 @@ playHuman w = do
     if  final > 0
        then print ("Player " ++ (int2String (pid(player1 w))) ++ " wins !")
        else runGame (NewState ((turn w)+1) (row w) (col w) g (player2 w) (player1 w))
-
-       
+  
 {- playAI -> Depenent del tipus de estratègia executa una comanada de moviment
     
     PARAMETRES:
@@ -561,7 +601,7 @@ playAI Rng w = do
     
     let g= insert cn (pid(player1 w)) (board w)
     
-    let final= anyWin (row w) (col w) 4 g
+    let final= fst(checkWin (row w) (col w) 4 g)
     
     putStrLn " "
     
@@ -573,9 +613,37 @@ playAI Rng w = do
        then print ("Player " ++ (int2String (pid(player1 w))) ++ " wins !")
        else runGame (NewState ((turn w)+1) (row w) (col w) g (player2 w) (player1 w))
 -- cridar funcio winOther (crida funcio chekc win i retorna pid i pos on pot guanyar, aka si diagonal agafa pos de dreta) si no comprovam quina pos puc "guanyar" amb linies de dist var 1->4
-playAI Greedy w = print "G"
+playAI Greedy w = do
     
-
+    putStrLn " "
+    
+    --let canEnd = checkWin (row w) (col w) 3 g
+    
+    --let colNum = 
+    
+    ----------------------------------------------
+    let ac= getAvailabeCols (row w) 1 (col w) (board w)
+    
+    r1 <- randInt 1 (length ac)
+    
+    let cn = getFromList r1 ac
+    
+    let g= insert cn (pid(player1 w)) (board w)
+    
+    -------- FINS AQUI == RNG PERQUE COMPILI -------------------
+    
+    let final= fst(checkWin (row w) (col w) 4 g)
+    
+    putStrLn " "
+    
+    printBoard (row w) (col w) g
+    
+    putStrLn " "
+    
+    if  final > 0
+       then print ("Player " ++ (int2String (pid(player1 w))) ++ " wins !")
+       else runGame (NewState ((turn w)+1) (row w) (col w) g (player2 w) (player1 w))
+    
 playAI st w = print "F"
 
 
