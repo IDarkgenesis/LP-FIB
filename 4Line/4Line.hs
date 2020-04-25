@@ -292,46 +292,66 @@ getPieceInt r xs
         len     -> Longitud de la sequència a bucar
         m       -> Tauler on busquem la sequència
 -}
-winH :: Int -> Int -> Int -> Map Int [Int] -> (Int,Int)
-winH r cs len m
+winH :: Int -> Int -> Int -> Int -> Map Int [Int] -> (Int,Int)
+winH r cs len sel m
     | r == 1 = win
-    | fst win == 0 = (winH (r-1) cs len m)
+    | fst win == 0 = (winH (r-1) cs len sel m)
     | otherwise = win
     where
-        win= checkWinner r 1 cs [] len m
-        checkWinner :: Int -> Int -> Int -> [Int] -> Int -> Map Int [Int] -> (Int,Int)
-        checkWinner r c cs consec len m 
+        win= checkWinner r 1 cs [] len sel m
+        checkWinner :: Int -> Int -> Int -> [Int] -> Int -> Int -> Map Int [Int] -> (Int,Int)
+        checkWinner r c cs consec len sel m 
             | (c-cs) == 0 = case (sizConsec < lessLen) of
                                  True  -> (0,0)
-                                 False -> case match of
-                                               True  -> (obj,nextPos)
-                                               False -> (0,0)
+                                 False -> case sel of
+                                               0 -> case match of
+                                                         True  -> (obj,nextPos)
+                                                         False -> (0,0)
+                                               _ -> case matchSel of
+                                                         True  -> (obj,nextPos)
+                                                         False -> (0,0) 
             
             | otherwise = case (sizConsec < lessLen) of
                                
-                               True  -> case sizConsec of
-                                             
-                                             0 -> case isZero of
-                                                       True  -> checkWinner r (c+1) cs [] len m
-                                                       False -> checkWinner r (c+1) cs [obj] len m
-                                             
-                                             n -> case match of
-                                                       True  -> checkWinner r (c+1) cs (obj:consec) len m
-                                                       False -> case isZero of
-                                                                     True  -> checkWinner r (c+1) cs [] len m
-                                                                     False -> checkWinner r (c+1) cs [obj] len m
+                               True  -> case sel of
+                                             0 -> case sizConsec of
+                                                       0 -> case isZero of
+                                                                 True  -> checkWinner r (c+1) cs [] len sel m
+                                                                 False -> checkWinner r (c+1) cs [obj] len sel m
+                                                       n -> case match of
+                                                                 True  -> checkWinner r (c+1) cs (obj:consec) len sel m
+                                                                 False -> case isZero of
+                                                                               True  -> checkWinner r (c+1) cs [] len sel m
+                                                                               False -> checkWinner r (c+1) cs [obj] len sel m
+                                             _ -> case sizConsec of
+                                                       0 -> case isZero of
+                                                                 True  -> checkWinner r (c+1) cs [] len sel m
+                                                                 False -> case obEqSel of
+                                                                               True  -> checkWinner r (c+1) cs [obj] len sel m
+                                                                               False -> checkWinner r (c+1) cs [] len sel m
+                                                       
+                                                       n -> case matchSel of
+                                                                 True  -> checkWinner r (c+1) cs (obj:consec) len sel m
+                                                                 False -> checkWinner r (c+1) cs [] len sel m
                                
-                               False -> case match of
-                                             True  -> (obj,nextPos)
-                                             False -> case isZero of
-                                                           True  -> checkWinner r (c+1) cs [] len m
-                                                           False -> checkWinner r (c+1) cs [obj] len m
+                               False -> case sel of
+                                             0 -> case match of
+                                                       True  -> (obj,nextPos)
+                                                       False -> case isZero of
+                                                                     True  -> checkWinner r (c+1) cs [] len sel m
+                                                                     False -> checkWinner r (c+1) cs [obj] len sel m
+                                             _ -> case matchSel of
+                                                       True  -> (obj,nextPos)
+                                                       False -> checkWinner r (c+1) cs [] len sel m
+                                             
                                
             where
                sizConsec = length consec
                match = (obj == (head consec))
                lessLen = (len-1)
                isZero = (obj == 0)
+               obEqSel = (obj == sel)
+               matchSel = match && (obj == sel)
                obj = getPieceInt r (fromMaybe [] (find c m))
                nextPos :: Int
                nextPos
@@ -535,7 +555,7 @@ checkWin r c len m = case (fst vertical) of
                           _ -> vertical
     where
         vertical = (winV 1 c r len m)
-        horizontal = (winH r c len m)
+        horizontal = (winH r c len 0 m)
         diagonalF = (winDF r 1 r c Up [] len m)
         diagonalB =(winDB r c r c Up [] len m)
 
