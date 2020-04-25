@@ -268,195 +268,235 @@ winV c cs len m
             | (length consec) > 0 && (head consec) == (head elms) = checkWinner (tail elms) ((head elms):consec)
             | otherwise = checkWinner (tail elms)  [(head elms)]
 
-            
+{- getPieceInt -> Obte el valor guardat en la llista donada (ordenada amb nombres de major a menor)
+    
+    PARAMETRES:
+        r  -> Posicio en la llista on volem trobar l'element
+        xs -> Llista on busquem l'element
+-}            
 getPieceInt :: Int -> [Int] -> Int
 getPieceInt r xs
     | (r - length(xs)) < 0  = getPieceInt r (tail xs)
     | (r - length(xs)) > 0  = 0
     | (r - length(xs)) == 0 = (head xs)            
             
-{- winH -> 
+{- winH -> Busca en la direccio horitzontal si hi ha una sequència de len fitxes consecutives iguals
+    
+    PARAMETRES:
+        r       -> Fila on bucar la sequència
+        cs      -> Nombre total de columnes
+        len     -> Longitud de la sequència a bucar
+        m       -> Tauler on busquem la sequència
 -}
 winH :: Int -> Int -> Int -> Map Int [Int] -> Int
 winH r cs len m
     | r == 1 = win
-    | otherwise = win + (winH (r-1) cs m)
+    | otherwise = win + (winH (r-1) cs len m)
     where
-        win= checkWinner r 1 cs [] m
+        win= checkWinner r 1 cs [] len m
         checkWinner :: Int -> Int -> Int -> [Int] -> Int -> Map Int [Int] -> Int
         checkWinner r c cs consec len m 
-            | (c-cs) == 0 = case sizConsec of
-                                len -> case match of
-                                          True  -> obj
-                                          False -> 0
-                                n -> 0
+            | (c-cs) == 0 = case (sizConsec < lessLen) of
+                                 True  -> 0
+                                 False -> case match of
+                                               True  -> obj
+                                               False -> 0
             
-            | otherwise = case sizConsec of
-                               antLen -> case match of
-                                         True  -> obj
-                                         False -> case isZero of
+            | otherwise = case (sizConsec < lessLen) of
+                               
+                               True  -> case sizConsec of
+                                             
+                                             0 -> case isZero of
                                                        True  -> checkWinner r (c+1) cs [] len m
                                                        False -> checkWinner r (c+1) cs [obj] len m
-                               0 -> case isZero of
-                                         True  -> checkWinner r (c+1) cs [] len m
-                                         False -> checkWinner r (c+1) cs [obj] len m
-                               n -> case match of
-                                         True  -> checkWinner r (c+1) cs (obj:consec) len m
-                                         False -> case isZero of
-                                                       True  -> checkWinner r (c+1) cs [] len m
-                                                       False -> checkWinner r (c+1) cs [obj] len m
+                                             
+                                             n -> case match of
+                                                       True  -> checkWinner r (c+1) cs (obj:consec) len m
+                                                       False -> case isZero of
+                                                                     True  -> checkWinner r (c+1) cs [] len m
+                                                                     False -> checkWinner r (c+1) cs [obj] len m
+                               
+                               False -> case match of
+                                             True  -> obj
+                                             False -> case isZero of
+                                                           True  -> checkWinner r (c+1) cs [] len m
+                                                           False -> checkWinner r (c+1) cs [obj] len m
+                               
             where
                sizConsec = length consec
                match = (obj == (head consec))
+               lessLen = (len-1)
                isZero = (obj == 0)
                obj = getPieceInt r (fromMaybe [] (find c m))
+               
+{- winDF -> Busca en la direccio de les digaonals inverses una sequència de len elements consecutius iguals per saber si algu hi ha un guanyador amb len fitxes
+            (L'ordre de les guardes importa degut a que en les cantonades del tauler es pot seguir executant i no acabar mai)
 
-------------------------------------------------------------------------------------------
+    PARAMETRES:
+        r       -> Fila actual del tauler
+        c       -> Columna actual del tauler
+        rs      -> Nombre total de files
+        cs      -> Nombre total de columnes
+        dir     -> Direcco en la que ens movem dins del tauler per comprovar si hi ha guanyador
+        consec  -> Llista on guardem els elements consecutius iguals trobats
+        len     -> Longitud de la cadena guanyadora
+        m       -> Tauler on buscar el guanyador
+-}
 winDF :: Int -> Int -> Int -> Int -> Direction -> [Int] -> Int -> Map Int [Int] -> Int
 winDF r c rs cs dir consec len m
     | r == 1 && c == cs = 0
-    | dir == Up && (c+1) > cs = case sizConsec of
-                                     antLen -> case match of
-                                               True  -> obj
-                                               False -> winDF (r-1) c rs cs Down [] len m
-                                     n -> winDF (r-1) c rs cs Down [] len m
-    
-    | dir == Up && (r+1) > rs =  case sizConsec of
-                                     antLen -> case match of
-                                               True  -> obj
-                                               False -> winDF r (c+1) rs cs Down [] len m
-                                     n -> winDF r (c+1) rs cs Down [] len m
-    
-    | dir == Down && (r-1) < 1 = case sizConsec of
-                                      antLen -> case match of
-                                                True  -> obj
-                                                False -> winDF r (c+1) rs cs Up [] len m
-                                      n -> winDF r (c+1) rs cs Up [] len m
-
-    | dir == Down && (c-1) < 1 = case sizConsec of
-                                      antLen -> case match of
-                                                True  -> obj
-                                                False -> winDF (r-1) c rs cs Up [] len m
-                                      n -> winDF r (r-1) rs cs Up [] len m
-    
-    | dir == Up = case sizConsec of
-                       antLen -> case match of
-                                 True  -> obj
-                                 False -> case isZero of
-                                               True  -> winDF (r+1) (c+1) rs cs Up [] len m
-                                               False -> winDF (r+1) (c+1) rs cs Up [obj] len m
-                       0 -> case isZero of
-                                 True  -> winDF (r+1) (c+1) rs cs Up [] len m
-                                 False -> winDF (r+1) (c+1) rs cs Up [obj] len m
-                       n -> case match of
-                                 True  -> winDF (r+1) (c+1) rs cs Up (obj:consec) len m
-                                 False -> case isZero of
-                                               True  -> winDF (r+1) (c+1) rs cs Up [] len m
-                                               False -> winDF (r+1) (c+1) rs cs Up [obj] len m
+    | dir == Up && (c+1) > cs = case (sizConsec < lessLen) of
+                                      True  -> winDF (r-1) c rs cs Down [] len m
+                                      False -> case match of
+                                                    True  -> obj
+                                                    False -> winDF (r-1) c rs cs Down [] len m
+                                                    
+    | dir == Up && (r+1) > rs =  case (sizConsec < lessLen) of
+                                      True  -> winDF r (c+1) rs cs Down [] len m
+                                      False -> case match of
+                                                    True  -> obj
+                                                    False -> winDF r (c+1) rs cs Down [] len m
                                                
-     | dir == Down = case sizConsec of
-                       antLen -> case match of
-                                 True  -> obj
-                                 False -> case isZero of
-                                               True  -> winDF (r-1) (c-1) rs cs Down [] len m
-                                               False -> winDF (r-1) (c-1) rs cs Down [obj] len m
-                       0 -> case isZero of
-                                 True  -> winDF (r-1) (c-1) rs cs Down [] len m
-                                 False -> winDF (r-1) (c-1) rs cs Down [obj] len m
-                       n -> case match of
-                                 True  -> winDF (r-1) (c-1) rs cs Down (obj:consec) len m
-                                 False -> case isZero of
-                                               True  -> winDF (r-1) (c-1) rs cs Down [] len m
-                                               False -> winDF (r-1) (c-1) rs cs Down [obj] len m
-     where
-         sizConsec = length consec
-         match = (obj == (head consec))
-         isZero = (obj == 0)
-         obj = getPieceInt r (fromMaybe [] (find c m))
-{-
- case (sizConsec < antLen) of 
-                True  -> case sizConsec of 
-                            
-                            0 -> case isZero of
-                                 True  -> winDF (r-1) (c-1) rs cs Down [] len m
-                                 False -> winDF (r-1) (c-1) rs cs Down [obj] len m
+    | dir == Down && (r-1) < 1 = case (sizConsec < lessLen) of
+                                      True  -> winDF r (c+1) rs cs Up [] len m
+                                      False -> case match of
+                                                    True  -> obj
+                                                    False -> winDF r (c+1) rs cs Up [] len m
+
+    | dir == Down && (c-1) < 1 = case (sizConsec < lessLen) of
+                                      True  -> winDF r (r-1) rs cs Up [] len m
+                                      False -> case match of
+                                                    True  -> obj
+                                                    False -> winDF (r-1) c rs cs Up [] len m
+    
+    | dir == Up = case (sizConsec < lessLen) of 
+                          True  -> case sizConsec of 
+                                        0 -> case isZero of
+                                                  True  -> winDF (r+1) (c+1) rs cs Up [] len m
+                                                  False -> winDF (r+1) (c+1) rs cs Up [obj] len m
                                  
-                            n -> case match of
-                                 True  -> winDF (r-1) (c-1) rs cs Down (obj:consec) len m
-                                 False -> case isZero of
-                                               True  -> winDF (r-1) (c-1) rs cs Down [] len m
-                                               False -> winDF (r-1) (c-1) rs cs Down [obj] len m
-                False -> case match of
-                                 True  -> obj
-                                 False -> case isZero of
-                                               True  -> winDF (r-1) (c-1) rs cs Down [] len m
-                                               False -> winDF (r-1) (c-1) rs cs Down [obj] len m
-   -}          
-------------------------------------------------------------------------------------------
-winDB :: Int -> Int -> Int -> Int -> Direction -> [Int] -> Int -> Map Int [Int] -> Int
-winDB r c rs cs dir consec len m
-    | r == 1 && c == 1 = 0
-    | dir == Down && (r-1) < 1 = case sizConsec of
-                                      antLen -> case match of
-                                                True  -> obj
-                                                False -> winDB r (c-1) rs cs Up [] len m
-                                      n -> winDB r (c-1) rs cs Up [] len m
-                                      
-    | dir == Down && (c+1) > cs = case sizConsec of
-                                      antLen -> case match of
-                                                True  -> obj
-                                                False -> winDB (r+1) c rs cs Up [] len m
-                                      n -> winDB r (r+1) rs cs Up [] len m
-    
-    | dir == Up && (r+1) > rs =  case sizConsec of
-                                     antLen -> case match of
-                                               True  -> obj
-                                               False -> winDB r (c-1) rs cs Down [] len m
-                                     n -> winDB r (c-1) rs cs Down [] len m
-    
-    | dir == Up && (c-1) < 1 = case sizConsec of
-                                     antLen -> case match of
-                                               True  -> obj
-                                               False -> winDB (r-1) c rs cs Down [] len m
-                                     n -> winDB (r-1) c rs cs Down [] len m
-
-    
-    | dir == Up = case sizConsec of
-                       antLen -> case match of
-                                 True  -> obj
-                                 False -> case isZero of
-                                               True  -> winDB (r+1) (c-1) rs cs Up [] len m
-                                               False -> winDB (r+1) (c-1) rs cs Up [obj] len m
-                       0 -> case isZero of
-                                 True  -> winDB (r+1) (c-1) rs cs Up [] len m
-                                 False -> winDB (r+1) (c-1) rs cs Up [obj] len m
-                       n -> case match of
-                                 True  -> winDB (r+1) (c-1) rs cs Up (obj:consec) len m
-                                 False -> case isZero of
-                                               True  -> winDB (r+1) (c-1) rs cs Up [] len m
-                                               False -> winDB (r+1) (c-1) rs cs Up [obj] len m
+                                        n -> case match of
+                                                  True  -> winDF (r+1) (c+1) rs cs Up (obj:consec) len m
+                                                  False -> case isZero of
+                                                                True  -> winDF (r+1) (c+1) rs cs Up [] len m
+                                                                False -> winDF (r+1) (c+1) rs cs Up [obj] len m
+                          False -> case match of
+                                        True  -> obj
+                                        False -> case isZero of
+                                                      True  -> winDF (r+1) (c+1) rs cs Up [] len m
+                                                      False -> winDF (r+1) (c+1) rs cs Up [obj] len m
                                                
-     | dir == Down = case sizConsec of
-                       antLen -> case match of
-                                 True  -> obj
-                                 False -> case isZero of
-                                               True  -> winDB (r-1) (c+1) rs cs Down [] len m
-                                               False -> winDB (r-1) (c+1) rs cs Down [obj] len m
-                       0 -> case isZero of
-                                 True  -> winDB (r-1) (c+1) rs cs Down [] len m
-                                 False -> winDB (r-1) (c+1) rs cs Down [obj] len m
-                       n -> case match of
-                                 True  -> winDB (r-1) (c+1) rs cs Down (obj:consec) len m
-                                 False -> case isZero of
-                                               True  -> winDB (r-1) (c+1) rs cs Down [] len m
-                                               False -> winDB (r-1) (c+1) rs cs Down [obj] len m
+     | dir == Down = case (sizConsec < lessLen) of 
+                          True  -> case sizConsec of 
+                                        0 -> case isZero of
+                                                  True  -> winDF (r-1) (c-1) rs cs Down [] len m
+                                                  False -> winDF (r-1) (c-1) rs cs Down [obj] len m
+                                 
+                                        n -> case match of
+                                                  True  -> winDF (r-1) (c-1) rs cs Down (obj:consec) len m
+                                                  False -> case isZero of
+                                                                True  -> winDF (r-1) (c-1) rs cs Down [] len m
+                                                                False -> winDF (r-1) (c-1) rs cs Down [obj] len m
+                          False -> case match of
+                                        True  -> obj
+                                        False -> case isZero of
+                                                      True  -> winDF (r-1) (c-1) rs cs Down [] len m
+                                                      False -> winDF (r-1) (c-1) rs cs Down [obj] len m
      where
          sizConsec = length consec
          match = (obj == (head consec))
-         antLen = (len-1)
+         lessLen = (len-1)
          isZero = (obj == 0)
          obj = getPieceInt r (fromMaybe [] (find c m))
          
+{- winDB -> Busca en la direccio de les digaonals una sequència de len elements consecutius iguals per saber si algu hi ha un guanyador amb len fitxes
+            (L'ordre de les guardes importa degut a que en les cantonades del tauler es pot seguir executant i no acabar mai)
+
+    PARAMETRES:
+        r       -> Fila actual del tauler
+        c       -> Columna actual del tauler
+        rs      -> Nombre total de files
+        cs      -> Nombre total de columnes
+        dir     -> Direcco en la que ens movem dins del tauler per comprovar si hi ha guanyador
+        consec  -> Llista on guardem els elements consecutius iguals trobats
+        len     -> Longitud de la cadena guanyadora
+        m       -> Tauler on buscar el guanyador
+-}          
+winDB :: Int -> Int -> Int -> Int -> Direction -> [Int] -> Int -> Map Int [Int] -> Int
+winDB r c rs cs dir consec len m
+    | r == 1 && c == 1 = 0
+    | dir == Down && (r-1) < 1 = case (sizConsec < lessLen) of
+                                      True  -> winDB r (c-1) rs cs Up [] len m
+                                      False -> case match of
+                                                    True  -> obj
+                                                    False -> winDB r (c-1) rs cs Up [] len m
+                                                    
+    | dir == Down && (c+1) > cs = case (sizConsec < lessLen) of
+                                       True  -> winDB r (r+1) rs cs Up [] len m
+                                       False -> case match of
+                                                     True  -> obj
+                                                     False -> winDB (r+1) c rs cs Up [] len m
+                                                
+    | dir == Up && (r+1) > rs =  case (sizConsec < lessLen) of
+                                      True  -> winDB r (c-1) rs cs Down [] len m
+                                      False -> case match of
+                                                    True  -> obj
+                                                    False -> winDB r (c-1) rs cs Down [] len m
+                                                    
+    | dir == Up && (c-1) < 1 = case (sizConsec < lessLen) of
+                                     True  -> winDB (r-1) c rs cs Down [] len m
+                                     False -> case match of
+                                                   True  -> obj
+                                                   False -> winDB (r-1) c rs cs Down [] len m
+    
+    | dir == Up = case (sizConsec < lessLen) of 
+                          True  -> case sizConsec of 
+                                        0 -> case isZero of
+                                                  True  -> winDB (r+1) (c-1) rs cs Up [] len m
+                                                  False -> winDB (r+1) (c-1) rs cs Up [obj] len m
+                                 
+                                        n -> case match of
+                                                  True  -> winDB (r+1) (c-1) rs cs Up (obj:consec) len m
+                                                  False -> case isZero of
+                                                                True  -> winDB (r+1) (c-1) rs cs Up [] len m
+                                                                False -> winDB (r+1) (c-1) rs cs Up [obj] len m
+                          False -> case match of
+                                        True  -> obj
+                                        False -> case isZero of
+                                                      True  -> winDB (r+1) (c-1) rs cs Up [] len m
+                                                      False -> winDB (r+1) (c-1) rs cs Up [obj] len m
+                                               
+     | dir == Down = case (sizConsec < lessLen) of 
+                          True  -> case sizConsec of 
+                                        0 -> case isZero of
+                                                  True  -> winDB (r-1) (c+1) rs cs Down [] len m
+                                                  False -> winDB (r-1) (c+1) rs cs Down [obj] len m
+                                 
+                                        n -> case match of
+                                                  True  -> winDB (r-1) (c+1) rs cs Down (obj:consec) len m
+                                                  False -> case isZero of
+                                                                True  -> winDB (r-1) (c+1) rs cs Down [] len m
+                                                                False -> winDB (r-1) (c+1) rs cs Down [obj] len m
+                          False -> case match of
+                                        True  -> obj
+                                        False -> case isZero of
+                                                      True  -> winDB (r-1) (c+1) rs cs Down [] len m
+                                                      False -> winDB (r-1) (c+1) rs cs Down [obj] len m
+     where
+         sizConsec = length consec
+         match = (obj == (head consec))
+         lessLen = (len-1)
+         isZero = (obj == 0)
+         obj = getPieceInt r (fromMaybe [] (find c m))
+
+{- anyWin -> Aquesta funcio retorna el Pid del jugador que ha aconseguit una sequència de len fitxes consecutives iguals
+    
+    PARAMETRES:
+        r   -> Nombre de files del tauler
+        c   -> Nombre de columnes del tauler
+        len -> Longitud de la sequència a bucar
+        m   -> Tauler on busquem la sequència de longitud len
+-}         
 anyWin :: Int -> Int -> Int -> Map Int [Int] -> Int
 anyWin r c len m = (winV 1 c len m) + (winH r c len m) + (winDF r 1 r c Up [] len m) + (winDB r c r c Up [] len m)
 
@@ -533,7 +573,7 @@ playAI Rng w = do
        then print ("Player " ++ (int2String (pid(player1 w))) ++ " wins !")
        else runGame (NewState ((turn w)+1) (row w) (col w) g (player2 w) (player1 w))
 -- cridar funcio winOther (crida funcio chekc win i retorna pid i pos on pot guanyar, aka si diagonal agafa pos de dreta) si no comprovam quina pos puc "guanyar" amb linies de dist var 1->4
-playAI Greedy w = do
+playAI Greedy w = print "G"
     
 
 playAI st w = print "F"
