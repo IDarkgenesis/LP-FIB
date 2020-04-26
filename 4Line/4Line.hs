@@ -700,15 +700,35 @@ playHuman w = do
        else runGame (NewState ((turn w)+1) (row w) (col w) g (player2 w) (player1 w))
                 
 
-                
-augPos :: Int -> Int -> Int -> Int -> Map Int [Int] -> Int
-augPos r c 1 sel m = 0 
+{- augPos -> Funcio que bucsca la sequencia mes llarga posible amb l'estat actual
+    PARAMETRES:
+        r   -> Nombre de files
+        c   -> Nombre de columnes
+        len -> Logitud de la cadena
+        sel -> Identificador de seleccio de jugador
+        m   -> Tauler on busquem
+
+-}                
+augPos :: Int -> Int -> Int -> Int -> Map Int [Int] -> (Int,Int)
+augPos r c 1 sel m = (0,0)
 augPos r c len sel m
-    | cpos > 0 = cpos
+    | cpos > 0 = (cpos,len)
     | otherwise = augPos r c (len-1) sel m
     where
         cpos = snd (checkWin r c len sel m)
-                
+        
+{- greedyMoove -> Funcio que depenent de l'estat del tauler actual retorna la columna on s'ha de tirar la fitxa
+    
+    PARAMETRES:
+        r        -> Nombre de files
+        c        -> Nombre de columnes
+        sel      -> Identificador de seleccio de jugador
+        turn     -> Torn actual de la partida
+        rng      -> Nombre de columna aleatori valid generat previament
+        mayEnd   -> Si el valor es major que 0 indica que el bot pot guanyar la partida posant la fitxa en aquesta columna
+        otherEnd -> Si el valor es major que 0 indica que el jugador contrari pot guanyar la partida posant la fitxa en aquesta columna
+        m        -> Tauler on busquem 
+-}                
 greedyMoove :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Map Int [Int] -> Int
 greedyMoove r c sel turn rng mayEnd otherEnd m
     | turn == 1 = rng
@@ -717,9 +737,53 @@ greedyMoove r c sel turn rng mayEnd otherEnd m
     | calPos > 0 = calPos
     | otherwise = rng
     where
-        calPos = augPos r c 3 sel m
+        calPos = fst (augPos r c 3 sel m)
 
-    
+{--}        
+generateAll :: Int -> Int -> Int -> Map Int [Int] -> [Map Int [Int]]
+generateAll c cs pid m
+    | c == cs = [insert c pid m]
+    | otherwise = [insert c pid m] ++ generateAll (c+1) cs pid m        
+
+{--}    
+myFMax :: Int -> Int -> Int -> Int -> Int -> [Map Int [Int]] -> Int
+myFMax rs cs pid pos len list
+    | list == [] = pos
+    | otherwise = myFMax rs cs pid (fst nextObj) (snd nextObj) (tail list)
+    where
+        nextObj = getNext actObj newObj
+        actObj= (pos,len)
+        newObj= (augPos rs cs 4 pid (head list))
+        getNext :: (Int,Int) -> (Int,Int) -> (Int,Int)
+        getNext act new
+            | (snd act) > (snd new) = act
+            | otherwise = new    
+{--}
+minMax :: Int -> Int -> Int -> Int -> Int -> Map Int [Int] -> Int        
+minMax p r c pid1 pid2 m = myMax pid1 pid2 r c m (miniMax p r c pid1 pid2 m)
+     where
+         miniMax :: Int -> Int -> Int -> Int -> Int -> Map Int [Int] -> Int
+         miniMax p r c p1 p2 m
+             | p == 1 = myFMax r c p1 0 0 objs
+             | otherwise = myMax p1 p2 r c m (miniMax (p-1) r c p2 p1 m)
+             where
+                 objs = generateAll 1 c p1 m
+                             
+         myMax :: Int -> Int -> Int -> Int -> Map Int [Int] -> Int -> Int
+         myMax p1 p2 rs cs m pos = myFMax rs cs p1 0 0 (generateAll 1 cs p1 (insert pos p1 m))
+
+smartMoove :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Map Int [Int] -> Int
+smartMoove rs cs p1 p2 turn rng canEnd otherEnd m
+    | turn == 1 = rng
+    | canEnd > 0 = canEnd
+    | otherEnd > 0 = otherEnd
+    | calPos > 0 = calPos
+    | gPos > 0 = gPos
+    | otherwise = rng
+    where
+        calPos= minMax 5 rs cs p1 p2 m
+        gPos= greedyMoove rs cs p1 turn rng canEnd otherEnd m
+
 {- playAI -> Depenent del tipus de estratègia executa una comanada de moviment
     
     PARAMETRES:
@@ -750,7 +814,7 @@ playAI Rng w = do
     if  final > 0
        then print ("Player " ++ (int2String (pid(player1 w))) ++ " wins !")
        else runGame (NewState ((turn w)+1) (row w) (col w) g (player2 w) (player1 w))
--- cridar funcio winOther (crida funcio chekc win i retorna pid i pos on pot guanyar, aka si diagonal agafa pos de dreta) si no comprovam quina pos puc "guanyar" amb linies de dist var 1->4
+
 playAI Greedy w = do
     
     putStrLn " "
@@ -779,9 +843,31 @@ playAI Greedy w = do
        then print ("Player " ++ (int2String (pid(player1 w))) ++ " wins !")
        else runGame (NewState ((turn w)+1) (row w) (col w) g (player2 w) (player1 w))
     
-playAI st w = print "F"
-
-
+playAI Smart w = do
+    putStrLn " "
+    
+    let ac= getAvailabeCols (row w) 1 (col w) (board w)
+    
+    r1 <- randInt 1 (length ac)
+    
+    let rng = getFromList r1 ac
+    
+    let canEnd = checkWin (row w) (col w) 3 (pid(player1 w)) (board w)
+    let otherEnd = checkWin (row w) (col w) 3 (pid(player2 w)) (board w)
+    
+    let pos = smartMoove (row w) (col w) (pid(player1 w)) (pid(player2 w)) (turn w) rng (snd canEnd) (snd otherEnd) (board w)
+    
+    let g= insert pos (pid(player1 w)) (board w)
+    
+    let final= fst(checkWin (row w) (col w) 4 0 g)
+    
+    printBoard (row w) (col w) g
+    
+    putStrLn " "
+    
+    if  final > 0
+       then print ("Player " ++ (int2String (pid(player1 w))) ++ " wins !")
+       else runGame (NewState ((turn w)+1) (row w) (col w) g (player2 w) (player1 w))
 {- runGame -> S'encarrega de executar la jugada corresponent al jugador que li pertoca el torn
     
     PARAMETRES:
