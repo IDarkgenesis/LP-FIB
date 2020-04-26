@@ -246,11 +246,13 @@ printBoard r cs m= do
     printBoard (r-1) cs m    
 
 
-{- winV -> Busca si hi ha una sequència de 4 fitxes iguals consecutives per saber si hi ha algun guanyador
+{- winV -> Busca si hi ha una sequència de 4 fitxes iguals consecutives per saber si hi ha algun guanyador i retorna una posició si es posible generar una sequencia de longitud len+1.
     
     PARAMETRES:
         c   -> Columna a comprovar
         cs  -> Nombre total de columnes
+        len -> Longitud de la sequència a bucar
+        sel -> Valor que indica si es busca qualsevol jugador o només la d'un (0 -> Qualsevol Jugador | n -> Jugador amb identificador n)
         m   -> Tauler actual on buscar un guanyador
 -}
 winV :: Int -> Int -> Int -> Int -> Int -> Map Int [Int] -> (Int,Int)
@@ -285,12 +287,13 @@ getPieceInt r xs
     | (r - length(xs)) > 0  = 0
     | (r - length(xs)) == 0 = (head xs)            
             
-{- winH -> Busca en la direccio horitzontal si hi ha una sequència de len fitxes consecutives iguals
+{- winH -> Busca en la direccio horitzontal si hi ha una sequència de len fitxes consecutives iguals i retorna una posició si es posible generar una sequencia de longitud len+1.
     
     PARAMETRES:
         r       -> Fila on buscar la sequència
         cs      -> Nombre total de columnes
         len     -> Longitud de la sequència a bucar
+        sel     -> Valor que indica si es busca qualsevol jugador o només la d'un (0 -> Qualsevol Jugador | n -> Jugador amb identificador n)
         m       -> Tauler on busquem la sequència
 -}
 winH :: Int -> Int -> Int -> Int -> Map Int [Int] -> (Int,Int)
@@ -363,7 +366,7 @@ winH r cs len sel m
                    | otherwise = 0
                
                
-{- winDF -> Busca en la direccio de les digaonals inverses una sequència de len elements consecutius iguals per saber si algu hi ha un guanyador amb len fitxes
+{- winDF -> Busca en la direccio de les digaonals inverses una sequència de len elements consecutius iguals per saber si algu hi ha un guanyador amb len fitxes i retorna una posició si es posible generar una sequencia de longitud len+1.
             (L'ordre de les guardes importa degut a que en les cantonades del tauler es pot seguir executant i no acabar mai)
 
     PARAMETRES:
@@ -374,7 +377,7 @@ winH r cs len sel m
         dir     -> Direcco en la que ens movem dins del tauler per comprovar si hi ha guanyador
         consec  -> Llista on guardem els elements consecutius iguals trobats
         len     -> Longitud de la cadena guanyadora
-
+        sel     -> Valor que indica si es busca qualsevol jugador o només la d'un (0 -> Qualsevol Jugador | n -> Jugador amb identificador n)
         m       -> Tauler on buscar el guanyador
 -}
 winDF :: Int -> Int -> Int -> Int -> Direction -> [Int] -> Int -> Int -> Map Int [Int] -> (Int,Int)
@@ -498,7 +501,7 @@ winDF r c rs cs dir consec len sel m
              | otherwise = 0
              
          
-{- winDB -> Busca en la direccio de les digaonals una sequència de len elements consecutius iguals per saber si algu hi ha un guanyador amb len fitxes
+{- winDB -> Busca en la direccio de les digaonals una sequència de len elements consecutius iguals per saber si algu hi ha un guanyador amb len fitxes i retorna una posició si es posible generar una sequencia de longitud len+1.
             (L'ordre de les guardes importa degut a que en les cantonades del tauler es pot seguir executant i no acabar mai)
 
     PARAMETRES:
@@ -509,6 +512,7 @@ winDF r c rs cs dir consec len sel m
         dir     -> Direcco en la que ens movem dins del tauler per comprovar si hi ha guanyador
         consec  -> Llista on guardem els elements consecutius iguals trobats
         len     -> Longitud de la cadena guanyadora
+        sel     -> Valor que indica si es busca qualsevol jugador o només la d'un (0 -> Qualsevol Jugador | n -> Jugador amb identificador n)
         m       -> Tauler on buscar el guanyador
 -}          
 winDB :: Int -> Int -> Int -> Int -> Direction -> [Int] -> Int -> Int -> Map Int [Int] -> (Int,Int)
@@ -739,13 +743,27 @@ greedyMoove r c sel turn rng mayEnd otherEnd m
     where
         calPos = fst (augPos r c 3 sel m)
 
-{--}        
+{- generateAll -> Genera tots el taulers diferents inserint la 1 fitxa del jugada pid
+    PARAMETRES:
+        c   -> Columna actual
+        cs  -> Nombre total de columnes
+        pid -> Identificador del jugador
+        m   -> Tauler on volem inserir
+   -}        
 generateAll :: Int -> Int -> Int -> Map Int [Int] -> [Map Int [Int]]
 generateAll c cs pid m
     | c == cs = [insert c pid m]
     | otherwise = [insert c pid m] ++ generateAll (c+1) cs pid m        
 
-{--}    
+{- myFMax -> Obte el valor de la columna on s'ha d'inserir per aconseguir la sequencia de major longitud de tots les opcions disponibles
+    PARAMETRES:
+        rs   -> Nombre total de files
+        cs   -> Nombre total de columnes
+        pid  -> Identificador del jugador
+        pos  -> Millor posicio actual
+        len  -> Millor longitud actual aconseguida amb pos
+        list -> Llista dels diferents taulers on iterem
+-}    
 myFMax :: Int -> Int -> Int -> Int -> Int -> [Map Int [Int]] -> Int
 myFMax rs cs pid pos len list
     | list == [] = pos
@@ -757,8 +775,17 @@ myFMax rs cs pid pos len list
         getNext :: (Int,Int) -> (Int,Int) -> (Int,Int)
         getNext act new
             | (snd act) > (snd new) = act
-            | otherwise = new    
-{--}
+            | otherwise = new   
+            
+{- minMax -> Funcio que retorna una columna on inserir la fitxa despres de comprovar p jugades envant tenint en compte l'estat on l'altre també intenta aconseguir la maxmima longitud posible 
+    PARAMETRES:
+        p    -> Profunditat de jugades a mirar
+        r    -> Nombre total de files
+        c    -> Nombre total de columnes
+        pid1 -> Identificador jugador 1
+        pid2 -> Identificador jugador 2
+        m    -> Tauler on comprovem la jugada
+-}
 minMax :: Int -> Int -> Int -> Int -> Int -> Map Int [Int] -> Int        
 minMax p r c pid1 pid2 m = myMax pid1 pid2 r c m (miniMax p r c pid1 pid2 m)
      where
@@ -772,6 +799,18 @@ minMax p r c pid1 pid2 m = myMax pid1 pid2 r c m (miniMax p r c pid1 pid2 m)
          myMax :: Int -> Int -> Int -> Int -> Map Int [Int] -> Int -> Int
          myMax p1 p2 rs cs m pos = myFMax rs cs p1 0 0 (generateAll 1 cs p1 (insert pos p1 m))
 
+         
+{- smartMoove -> Funcio que retorna una jugada depenent de l'estat actual de la partida
+    PARAMETRES:
+        rs       -> Nombre total de files
+        cs       -> Nombre total de columnes
+        p1       -> Identificador del jugador 1
+        p2       -> Identificador del jugador 2
+        turn     -> Torn actual de la partida
+        rng      -> Nombre aleatori de una columna valida
+        canEnd   -> Nombre major que 0 si es pot guanyar la partida posant'hi una fitxa
+        otherEnd -> Nombre major que 0 si el contrari pot guanyar la partida posant'hi una fitxa
+-}
 smartMoove :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Map Int [Int] -> Int
 smartMoove rs cs p1 p2 turn rng canEnd otherEnd m
     | turn == 1 = rng
