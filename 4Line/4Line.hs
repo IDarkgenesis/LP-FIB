@@ -253,24 +253,25 @@ printBoard r cs m= do
         cs  -> Nombre total de columnes
         m   -> Tauler actual on buscar un guanyador
 -}
-winV :: Int -> Int -> Int -> Int -> Map Int [Int] -> (Int,Int)
-winV c cs rs len m 
+winV :: Int -> Int -> Int -> Int -> Int -> Map Int [Int] -> (Int,Int)
+winV c cs rs len sel m 
     | (c-cs) == 0 = (win,nextPos)
-    | win == 0 = winV (c+1) cs rs len m
+    | win == 0 = winV (c+1) cs rs len sel m
     | otherwise = (win,nextPos)
     where
-        win = checkWinner (fromMaybe [] (find c m)) []
+        win = checkWinner sel (fromMaybe [] (find c m)) []
         nextPos :: Int
         nextPos 
             | (length (fromMaybe [] (find c m))) == rs = 0
             | otherwise = c
-        checkWinner :: [Int] -> [Int] ->Int
-        checkWinner elms consec
+        checkWinner :: Int -> [Int] -> [Int] ->Int
+        checkWinner sel elms consec
+            | sel /= 0 && (length elms) > 0 && (head elms) /= sel = 0
             | (length elms) == 0 && (length consec) == 0 = 0
             | (length consec) == len = (head consec)
             | (length elms) == 0 && (length consec) > 0 = 0
-            | (length consec) > 0 && (head consec) == (head elms) = checkWinner (tail elms) ((head elms):consec)
-            | otherwise = checkWinner (tail elms)  [(head elms)]
+            | (length consec) > 0 && (head consec) == (head elms) = checkWinner sel (tail elms) ((head elms):consec)
+            | otherwise = checkWinner sel (tail elms)  [(head elms)]
 
 {- getPieceInt -> Obte el valor guardat en la llista donada (ordenada amb nombres de major a menor)
     
@@ -287,7 +288,7 @@ getPieceInt r xs
 {- winH -> Busca en la direccio horitzontal si hi ha una sequència de len fitxes consecutives iguals
     
     PARAMETRES:
-        r       -> Fila on bucar la sequència
+        r       -> Fila on buscar la sequència
         cs      -> Nombre total de columnes
         len     -> Longitud de la sequència a bucar
         m       -> Tauler on busquem la sequència
@@ -355,8 +356,8 @@ winH r cs len sel m
                obj = getPieceInt r (fromMaybe [] (find c m))
                nextPos :: Int
                nextPos
-                   | (c+1) < cs && r == 1 && (getPieceInt r (fromMaybe [] (find (c+1) m))) == 0 = (c+1)
-                   | (c+1) < cs && r > 1  && (getPieceInt (r-1) (fromMaybe [] (find (c+1) m))) /= 0 && (getPieceInt r (fromMaybe [] (find (c+1) m))) == 0 = (c+1)
+                   | (c+1) <= cs && r == 1 && (getPieceInt r (fromMaybe [] (find (c+1) m))) == 0 = (c+1)
+                   | (c+1) <= cs && r > 1  && (getPieceInt (r-1) (fromMaybe [] (find (c+1) m))) /= 0 && (getPieceInt r (fromMaybe [] (find (c+1) m))) == 0 = (c+1)
                    | (c-len) >= 1 && r == 1 && (getPieceInt r (fromMaybe [] (find (c-len) m))) == 0 = (c-len)
                    | (c-len) >= 1 && r > 1 && (getPieceInt (r-1) (fromMaybe [] (find (c-len) m))) /= 0 && (getPieceInt r (fromMaybe [] (find (c-len) m))) == 0 = (c-len)
                    | otherwise = 0
@@ -372,7 +373,7 @@ winH r cs len sel m
         cs      -> Nombre total de columnes
         dir     -> Direcco en la que ens movem dins del tauler per comprovar si hi ha guanyador
         consec  -> Llista on guardem els elements consecutius iguals trobats
-        len     -> Longitud de la cadena guanyadora| | |O|X|O|
+        len     -> Longitud de la cadena guanyadora
 
         m       -> Tauler on buscar el guanyador
 -}
@@ -630,7 +631,7 @@ winDB r c rs cs dir consec len sel m
          nextPos
              | (c-1) >= 1 && (r+1) <= rs && (getPieceInt r (fromMaybe [] (find (c-1) m))) /= 0 && (getPieceInt (r+1) (fromMaybe [] (find (c-1) m))) == 0 = (c-1)
              | (c+len) <= cs && (r-len) == 1 && (getPieceInt (r-len) (fromMaybe [] (find (c+len) m))) == 0 = (c+len)
-             | (c+len) <= cs && (r-len) > 1 && (getPieceInt (r-len) (fromMaybe [] (find (c+len) m))) == 0 && (getPieceInt (r-len-1) (fromMaybe [] (find (c+len) m))) /= 0 = (c-len)
+             | (c+len) <= cs && (r-len) > 1 && (getPieceInt (r-len) (fromMaybe [] (find (c+len) m))) == 0 && (getPieceInt (r-len-1) (fromMaybe [] (find (c+len) m))) /= 0 = (c+len)
              | otherwise = 0
       
 {- checkWin -> Aquesta funcio retorna el Pid del jugador que ha aconseguit una sequència de len fitxes consecutives iguals i la seguent posicio si es posible per aconseguir len+1
@@ -641,8 +642,8 @@ winDB r c rs cs dir consec len sel m
         len -> Longitud de la sequència a bucar
         m   -> Tauler on busquem la sequència de longitud len
 -}
-checkWin :: Int -> Int -> Int -> Map Int [Int] -> (Int,Int)
-checkWin r c len m = case (fst vertical) of
+checkWin :: Int -> Int -> Int -> Int ->  Map Int [Int] -> (Int,Int)
+checkWin r c len sel m = case (fst vertical) of
                           0 -> case (fst horizontal) of
                                     0 -> case (fst diagonalF) of
                                               0 -> diagonalB
@@ -650,10 +651,10 @@ checkWin r c len m = case (fst vertical) of
                                     _ -> horizontal
                           _ -> vertical
     where
-        vertical = (winV 1 c r len m)
-        horizontal = (winH r c len 0 m)
-        diagonalF = (winDF r 1 r c Up [] len 0 m)
-        diagonalB =(winDB r c r c Up [] len 0 m)
+        vertical = (winV 1 c r len sel m)
+        horizontal = (winH r c len sel m)
+        diagonalF = (winDF r 1 r c Up [] len sel m)
+        diagonalB =(winDB r c r c Up [] len sel m)
 
 
 
@@ -685,7 +686,7 @@ playHuman w = do
     let cn = string2Int c1
     let g= insert cn (pid(player1 w)) (board w)
     
-    let final= fst(checkWin (row w) (col w) 4 g)
+    let final= fst(checkWin (row w) (col w) 4  0 g)
 
     putStrLn " "
     
@@ -697,7 +698,28 @@ playHuman w = do
     if  final > 0
        then print ("Player " ++ (int2String (pid(player1 w))) ++ " wins !")
        else runGame (NewState ((turn w)+1) (row w) (col w) g (player2 w) (player1 w))
-  
+                
+
+                
+augPos :: Int -> Int -> Int -> Int -> Map Int [Int] -> Int
+augPos r c 1 sel m = 0 
+augPos r c len sel m
+    | cpos > 0 = cpos
+    | otherwise = augPos r c (len-1) sel m
+    where
+        cpos = snd (checkWin r c len sel m)
+                
+greedyMoove :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Map Int [Int] -> Int
+greedyMoove r c sel turn rng mayEnd otherEnd m
+    | turn == 1 = rng
+    | mayEnd > 0 = mayEnd
+    | otherEnd > 0 = otherEnd 
+    | calPos > 0 = calPos
+    | otherwise = rng
+    where
+        calPos = augPos r c 3 sel m
+
+    
 {- playAI -> Depenent del tipus de estratègia executa una comanada de moviment
     
     PARAMETRES:
@@ -717,7 +739,7 @@ playAI Rng w = do
     
     let g= insert cn (pid(player1 w)) (board w)
     
-    let final= fst(checkWin (row w) (col w) 4 g)
+    let final= fst(checkWin (row w) (col w) 4 0 g)
     
     putStrLn " "
     
@@ -733,26 +755,23 @@ playAI Greedy w = do
     
     putStrLn " "
     
-    --let canEnd = checkWin (row w) (col w) 3 g
-    
-    --let colNum = 
-    
-    ----------------------------------------------
     let ac= getAvailabeCols (row w) 1 (col w) (board w)
     
     r1 <- randInt 1 (length ac)
     
-    let cn = getFromList r1 ac
+    let rng = getFromList r1 ac
     
-    let g= insert cn (pid(player1 w)) (board w)
+    let canEnd = checkWin (row w) (col w) 3 (pid(player1 w)) (board w)
+    let otherEnd = checkWin (row w) (col w) 3 (pid(player2 w)) (board w)
     
-    -------- FINS AQUI == RNG PERQUE COMPILI -------------------
+    let pos = greedyMoove (row w) (col w) (pid(player1 w)) (turn w) rng (snd canEnd) (snd otherEnd) (board w)
     
-    let final= fst(checkWin (row w) (col w) 4 g)
+    let g= insert pos (pid(player1 w)) (board w)
     
-    putStrLn " "
+    let final= fst(checkWin (row w) (col w) 4 0 g)
     
     printBoard (row w) (col w) g
+    
     
     putStrLn " "
     
@@ -781,5 +800,5 @@ runGame w = do
        then print "Draw ! Board is full !"
        else 
         if (strat(player1 w)) == Human
-           then playHuman (NewState ((turn w)+1) (row w) (col w) (board w) (player1 w) (player2 w))
-           else playAI (strat(player1 w)) (NewState ((turn w)+1) (row w) (col w) (board w) (player1 w) (player2 w))
+           then playHuman (NewState (turn w) (row w) (col w) (board w) (player1 w) (player2 w))
+           else playAI (strat(player1 w)) (NewState (turn w) (row w) (col w) (board w) (player1 w) (player2 w))
