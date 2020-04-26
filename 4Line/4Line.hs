@@ -162,7 +162,9 @@ initBoard c = Map.fromList (map createCol [1..c])
 -}
 createColNum :: Int -> Int -> String
 createColNum c cs
-    | c < cs  = " " ++ int2String c ++ createColNum (c+1) cs
+    | c < cs  && c < 10 = "  " ++ int2String c ++ " " ++ createColNum (c+1) cs
+    | c < cs  && c >= 10 = " " ++ int2String c ++ createColNum (c+1) cs
+    | c == cs && c < 10 = "  " ++ int2String c
     | otherwise = " " ++ int2String c
 
     
@@ -171,8 +173,8 @@ createColNum c cs
         n   -> Representa el nombre de columnes que falten per crear 
 -}
 createHeader :: Int -> String     
-createHeader 1 =  "+-+"
-createHeader n = "+-" ++ createHeader (n-1)
+createHeader 1 =  "+---+"
+createHeader n = "+---" ++ createHeader (n-1)
 
 
 {- selectPiece -> Donat un valor que representa un PID de un jugador determina la fitxa
@@ -181,8 +183,8 @@ createHeader n = "+-" ++ createHeader (n-1)
         id  -> nombre compres entre 1 i 2 que representa al jugador que ha colocat una fitxa
 -}
 selectPiece :: Int -> String
-selectPiece 1 = "|X"
-selectPiece 2 = "|O"
+selectPiece 1 = "| X "
+selectPiece 2 = "| O "
 
 
 {- getPiece -> Determina si l'element que volem es troba a la taula i si es troba al principi de la llista
@@ -194,7 +196,7 @@ selectPiece 2 = "|O"
 getPiece:: Int -> [Int] -> String
 getPiece r xs
     | (r - length(xs)) < 0 = getPiece r (tail xs)
-    | (r - length(xs)) > 0 = "| "
+    | (r - length(xs)) > 0 = "|   "
     | (r - length(xs)) == 0 = selectPiece (head xs)    
 
     
