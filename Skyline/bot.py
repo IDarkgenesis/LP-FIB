@@ -34,7 +34,7 @@ Aqui pot trobar diferents comandes per coneixer el funcionament
 def definirSkyline(update, context):
     info = '''
 *Definir un Skyline*
-    
+
 Hi ha diferents formes de definirlos, les seguents comandes especifiquen com es realitza cada un:
     /simple
     /compost
@@ -53,7 +53,7 @@ Per a definir un skyline simple s'ha d'indicar un nom de variable que comenci am
 
 Un exemple seria `a := (5,3,7)`.
 
-En aquest cas crea un skyline amb l'identificador `a` amb un edifici situat a la coordenada 5 fins la 7 amb una altura de 2 unitats. 
+En aquest cas crea un skyline amb l'identificador `a` amb un edifici situat a la coordenada 5 fins la 7 amb una altura de 2 unitats.
 '''
     context.bot.send_message(chat_id=update.effective_chat.id, text=info, parse_mode="Markdown")
 
@@ -69,7 +69,7 @@ Per a definir un skyline compost s'ha d'indicar un nom de variable que comenci a
 
 Un exemple seria `a := [(5,3,7),(0,2,2),(7,5,8)]`.
 
-En aquest cas crea un skyline amb l'identificador `a` amb tres edificis amb les seves coordenades i alçades corresponents. 
+En aquest cas crea un skyline amb l'identificador `a` amb tres edificis amb les seves coordenades i alçades corresponents.
     '''
     context.bot.send_message(chat_id=update.effective_chat.id, text=info, parse_mode="Markdown")
 
@@ -80,13 +80,13 @@ def aleatori(update, context):
 
 Per a definir un skyline aleatori s'ha d'indicar un nom de variable que comenci amb una lletra o una lletra sola, seguit de la seguent estructura:
 
-`:=` i a continuació de la seguent forma `{n, h, w, xmin, xmax}`. 
-    - `n` indica la quantitat d'edificis que volem. 
+`:=` i a continuació de la seguent forma `{n, h, w, xmin, xmax}`.
+    - `n` indica la quantitat d'edificis que volem.
     - `h` indica l'altura màxima que pot obtenir un edifici.
     - `w` indica l'amplada maxima que pot obtenir un edifici.
     - `xmin` indica la posició mínima que pot obtenir un edifici.
     - `xmax` indica la posició màxima que pot obtenir un edifici.
-    
+
 Un exemple seria `a := {10,20,8,0,60}`.
 '''
     context.bot.send_message(chat_id=update.effective_chat.id, text=info, parse_mode="Markdown")
@@ -179,8 +179,11 @@ Per a carregar un Skyline que haviem guardat previament s'ha d'indicar en el xat
 
 
 def listVars(update, context):
-    print("listVars")
-    print(context.user_data['skylines'])
+    missatge = "Llista de variables:\n"
+    dic = context.user_data['skylines']
+    for key in dic:
+        missatge += "%s\n" % str(key)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=missatge)
 
 
 def save(update, context):
@@ -277,3 +280,4 @@ dispatcher.add_handler(MessageHandler(Filters.text, commandManagement))
 
 # engega el bot
 updater.start_polling()
+
