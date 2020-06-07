@@ -29,6 +29,11 @@ class SkylineVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by SkylineParser#parent.
+    def visitParent(self, ctx:SkylineParser.ParentContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by SkylineParser#intersec.
     def visitIntersec(self, ctx:SkylineParser.IntersecContext):
         return self.visitChildren(ctx)

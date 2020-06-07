@@ -4,6 +4,7 @@ from antlr4 import *
 from cl.SkylineLexer import SkylineLexer
 from cl.SkylineParser import SkylineParser
 from cl.EvalVisitor import EvalVisitor
+import pickle
 
 
 # defineix una funció que saluda i que s'executarà quan el bot rebi el missatge /start
@@ -179,9 +180,32 @@ Per a carregar un Skyline que haviem guardat previament s'ha d'indicar en el xat
 def listVars(update, context):
     print("listVars")
     print(context.user_data['skylines'])
-    for k, v in context.user_data['skylines'].items():
-        msg = "var %d: %d" % (k, v)
-        context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+
+
+def save(update, context):
+    var = update.message.text[6:]
+    path = "./saves/" + context.user_data['userID'] + var + ".pckl"
+
+    Sklns = context.user_data['skylines']
+
+    with open(path, "wb") as file:
+        pickle.dump(Sklns[var], file)
+
+    missatge = "Variable " + var + " guardada !"
+    context.bot.send_message(chat_id=update.effective_chat.id, text=missatge)
+
+
+def load(update, context):
+    var = update.message.text[6:]
+    path = "./saves/" + context.user_data['userID'] + var + ".pckl"
+
+    Sklns = context.user_data['skylines']
+
+    with open(path, "rb") as file:
+        Sklns[var] = pickle.load(file)
+
+    missatge = "Variable " + var + " carregada !"
+    context.bot.send_message(chat_id=update.effective_chat.id, text=missatge)
 
 
 def commandManagement(update, context):
@@ -205,7 +229,11 @@ def commandManagement(update, context):
 def response(update, context, actSkln):
     path = './fotos/' + str(context.user_data['userID']) + '.png'
     actSkln.createplot(path)
+    area = actSkln.area
+    heigth = actSkln.hei
     context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(path, 'rb'))
+    missatge = "Area: %d \nAltura: %d" % (area, heigth)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=missatge)
 
 
 # declara una constant amb el access token que llegeix de token.txt
@@ -230,6 +258,8 @@ dispatcher.add_handler(CommandHandler('desplacament', desplacament))
 dispatcher.add_handler(CommandHandler('reflexio', reflexio))
 dispatcher.add_handler(CommandHandler('guardarICarregarSkylines', guardarICarregarSkylines))
 dispatcher.add_handler(CommandHandler('lst', listVars))
+dispatcher.add_handler(CommandHandler('save', save))
+dispatcher.add_handler(CommandHandler('load', load))
 dispatcher.add_handler(MessageHandler(Filters.text, commandManagement))
 
 # engega el bot

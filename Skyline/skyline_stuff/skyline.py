@@ -44,28 +44,46 @@ class Skyline:
     def __init__(self, skyline=None):
         if skyline is None:
             self.buildings = []
+            self.area = 0
+            self.hei = 0
         else:
             self.buildings = copy.deepcopy(skyline.buildings)
+            self.area = copy.deepcopy(skyline.area)
+            self.hei = copy.deepcopy(skyline.hei)
 
     def addbuilding(self, b):
         if len(self.buildings) == 0:
             self.buildings.append(b)
+            self.area += self.buildings[0].getarea()
+            self.hei = self.buildings[0].y
         else:
             newp = findpos(self.buildings, b.xmin, 0, len(self.buildings) - 1)
             self.buildings.insert(newp, b)
+            self.area += self.buildings[newp].getarea()
+            self.hei = self.buildings[newp].y
+
             i = newp + 1
             while i < len(self.buildings) and self.buildings[i].xmin <= b.xmax:
                 if self.buildings[i].xmax <= b.xmax:
                     if self.buildings[i].y <= b.y:
+                        self.area -= self.buildings[i].getarea()
                         self.buildings.pop(i)
                         continue
                     else:
                         self.buildings[i].overlaped = abs(b.y - self.buildings[i].y)
+                        self.area -= self.buildings[i].getarea()
                         self.buildings[i].renewarea()
+                        self.area += self.buildings[i].getarea()
+                        if self.hei < self.buildings[i].y:
+                            self.hei = self.buildings[i].y
                 else:
                     diff = b.xmax - self.buildings[i].xmin
                     self.buildings[i].xmin += diff
+                    self.area -= self.buildings[i].getarea()
                     self.buildings[i].renewarea()
+                    self.area += self.buildings[i].getarea()
+                    if self.hei < self.buildings[i].y:
+                        self.hei = self.buildings[i].y
                 i += 1
 
     def rngcreator(self, n, h, w, xmin, xmax):
@@ -78,6 +96,7 @@ class Skyline:
                 xm = random.randrange(xmin, xmax)
 
             self.addbuilding(Building(xm, he, xm + wi, 0))
+        self.calcArea()
 
     def translate(self, n):
         for elem in self.buildings:
@@ -88,17 +107,19 @@ class Skyline:
         auxBuild = copy.deepcopy(sk.buildings)
         for elem in auxBuild:
             self.addbuilding(elem)
+        self.calcArea()
 
     def intersection(self, sk):
         if len(self.buildings) > 0:
             auxBuild = copy.deepcopy(sk.buildings)
-            newl = []
+            auxSky = Skyline()
             for elem in auxBuild:
                 pos = findpos(self.buildings, elem.xmin, 0, len(self.buildings) - 1)
-                print(pos)
+                # print(pos)
                 if pos < len(self.buildings) and elem.xmin >= self.buildings[pos].xmin and elem.xmax <= self.buildings[pos].xmax and elem.y <= self.buildings[pos].y:
-                    newl.append(elem)
-            self.buildings = newl
+                    auxSky.addbuilding(elem)
+            self.buildings = copy.deepcopy(auxSky.buildings)
+            self.calcArea()
 
     def replicate(self, n):
         if len(self.buildings) > 0 and n > 1:
@@ -107,6 +128,7 @@ class Skyline:
             for it in range(1, n):
                 for elem in cpy:
                     self.buildings.append(elem.duplicate(it, dist))
+            self.calcArea()
 
     def reversebuildings(self):
         if len(self.buildings) > 0:
@@ -118,7 +140,8 @@ class Skyline:
 
                 elem.xmin += d1 * 2 - lng
                 elem.xmax += d2 * 2 - lng
-        self.buildings.reverse()
+            self.buildings.reverse()
+            self.calcArea()
 
     def createplot(self, path):
         fig, ax = plt.subplots()
@@ -129,6 +152,13 @@ class Skyline:
         ax.bar(pos, ys, wi, align='edge', facecolor='#ff0000')
         matplotlib.pyplot.savefig(path)
 
+    def calcArea(self):
+        self.area = 0
+        self.hei = 0
+        for elem in self.buildings:
+            self.area += elem.getarea()
+            if self.hei < elem.y:
+                self.hei = elem.y
 
 """""
 random.seed()

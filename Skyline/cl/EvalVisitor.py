@@ -22,8 +22,7 @@ class EvalVisitor(SkylineVisitor):
     def visitLet(self, ctx: SkylineParser.LetContext):
         print("visitLet")
         lst = [n for n in ctx.getChildren()]
-        nameVar= lst[0].getText()
-        # nameVar: str = lst[0].getText()
+        nameVar = lst[0].getText()
         # print("nameVar: " + str(nameVar))
         skln = Skyline(self.visit(lst[2]))
         self.Skylines[nameVar] = skln
@@ -38,6 +37,11 @@ class EvalVisitor(SkylineVisitor):
     def visitOpskyline(self, ctx: SkylineParser.OpskylineContext):
         print("visitOpskyline")
         lst = [n for n in ctx.getChildren()]
+        if ctx.parent():
+            print("parent")
+            skln = Skyline(self.visit(lst[1]))
+            return skln
+
         if ctx.reflexion():
             print("reflexion")
             skln = Skyline(self.visit(lst[1]))
@@ -48,8 +52,8 @@ class EvalVisitor(SkylineVisitor):
             print("intersec")
             sk1 = Skyline(self.visit(lst[0]))
             sk2 = Skyline(self.visit(lst[2]))
-
-            skln = Skyline(sk1.intersection(sk2))
+            sk1.intersection(sk2)
+            skln = Skyline(sk1)
 
             return skln
 
@@ -63,14 +67,10 @@ class EvalVisitor(SkylineVisitor):
 
         if ctx.union():
             print("union")
-
-            nameVar1 = lst[0].getText()
-            sk1 = self.Skylines[nameVar1]
-
-            nameVar2 = lst[2].getText()
-            sk2 = self.Skylines[nameVar2]
-
-            skln = Skyline(sk1.union(sk2))
+            sk1 = Skyline(self.visit(lst[0]))
+            sk2 = Skyline(self.visit(lst[2]))
+            sk1.union(sk2)
+            skln = Skyline(sk1)
 
             return skln
 
@@ -92,9 +92,9 @@ class EvalVisitor(SkylineVisitor):
             return skln
 
         if ctx.skln():
-            print("I FKNG EXIST (IM RETARD :D)")
-            nameVar = lst[0].getText()
-            return self.Skylines[nameVar]
+            print("Using skyline")
+            skln = Skyline(self.visit(lst[0]))
+            return skln
 
         if ctx.simp():
             print("simp")
@@ -104,7 +104,44 @@ class EvalVisitor(SkylineVisitor):
 
             return skln
 
+        if ctx.rng():
+            print("rng")
+            skln = Skyline(self.visit(lst[1]))
+            return skln
+
+        if ctx.comp():
+            print("comp")
+            skln = Skyline(self.visit(lst[1]))
+            return skln
+
     def visitSimp(self, ctx: SkylineParser.SimpContext):
         print("visitSimp")
         lst = [n for n in ctx.getChildren()]
         return Building(float(lst[0].getText()), float(lst[2].getText()), float(lst[4].getText()), 0)
+
+    def visitRng(self, ctx: SkylineParser.RngContext):
+        print("visitRng")
+        lst = [n for n in ctx.getChildren()]
+        skln = Skyline()
+        skln.rngcreator(int(lst[0].getText()), int(lst[2].getText()), int(lst[4].getText()), int(lst[6].getText()),
+                        int(lst[8].getText()))
+        return skln
+
+    def visitComp(self, ctx: SkylineParser.CompContext):
+        print("visitComp")
+        lst = [n for n in ctx.getChildren()]
+        skln = Skyline()
+        b = copy.deepcopy(self.visit(lst[1]))
+        skln.addbuilding(b)
+        i = 5
+        while i < len(lst):
+            b = copy.deepcopy(self.visit(lst[i]))
+            skln.addbuilding(b)
+            i += 4
+        return skln
+
+    def visitSkln(self, ctx: SkylineParser.SklnContext):
+        print("I FKNG EXIST (IM RETARD :D)")
+        lst = [n for n in ctx.getChildren()]
+        nameVar = lst[0].getText()
+        return self.Skylines[nameVar]

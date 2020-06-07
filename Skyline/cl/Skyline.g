@@ -6,7 +6,7 @@ let: VAR ':=' opskyline;
 
 alone: opskyline;
 
-opskyline: '(' opskyline ')' 
+opskyline: '(' parent ')'
     | reflexion opskyline
     | opskyline intersec opskyline
     | opskyline replicate NUM
@@ -17,6 +17,8 @@ opskyline: '(' opskyline ')'
     | '('simp')'
     | skln
     ;
+
+parent: opskyline;
 
 intersec: '*';
 replicate: '*';
