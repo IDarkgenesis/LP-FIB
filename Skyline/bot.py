@@ -26,6 +26,7 @@ Aqui pot trobar diferents comandes per coneixer el funcionament
     /definirSkyline
     /operacionsAmbSkylines
     /guardarICarregarSkylines
+    /author
     '''
     context.bot.send_message(chat_id=update.effective_chat.id, text=info, parse_mode='Markdown')
 
@@ -208,6 +209,16 @@ def load(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text=missatge)
 
 
+def clean(update, context):
+    context.user_data['skylines'] = {}
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Totes les variables esborrades!")
+
+
+def author(update, context):
+    missatge = "Nom: Bartomeu Perelló Comas\nCorreu: bartomeu.perello@est.fib.upc.edu"
+    context.bot.send_message(chat_id=update.effective_chat.id, text=missatge)
+
+
 def commandManagement(update, context):
     missatge = update.message.text
 
@@ -237,7 +248,7 @@ def response(update, context, actSkln):
 
 
 # declara una constant amb el access token que llegeix de token.txt
-TOKEN = open('../Telegram_stuff/token.txt').read().strip()
+TOKEN = open('../../Telegram_stuff/token.txt').read().strip()
 
 # crea objectes per treballar amb Telegram
 updater = Updater(token=TOKEN, use_context=True)
@@ -258,6 +269,8 @@ dispatcher.add_handler(CommandHandler('desplacament', desplacament))
 dispatcher.add_handler(CommandHandler('reflexio', reflexio))
 dispatcher.add_handler(CommandHandler('guardarICarregarSkylines', guardarICarregarSkylines))
 dispatcher.add_handler(CommandHandler('lst', listVars))
+dispatcher.add_handler(CommandHandler('clean', clean))
+dispatcher.add_handler(CommandHandler('author', author))
 dispatcher.add_handler(CommandHandler('save', save))
 dispatcher.add_handler(CommandHandler('load', load))
 dispatcher.add_handler(MessageHandler(Filters.text, commandManagement))

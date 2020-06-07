@@ -1,0 +1,11 @@
+#
+###### Requirements without Version Specifiers ######
+#
+pickle
+matplotlib
+antlr4-python3-runtime
+python-telegram-bot
+#
+###### A particular file ######
+https://www.antlr.org/download/antlr-4.8-complete.jar
+#
